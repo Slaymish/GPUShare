@@ -302,33 +302,68 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
               {/* OpenClaw Integration */}
               <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z"
-                      fill="#3B82F6"
-                    />
-                    <path
-                      d="M12 6L8 12H12L12 18L16 12H12L12 6Z"
-                      fill="#3B82F6"
-                    />
-                  </svg>
+                  <img
+                    src="/openclaw-dark.svg"
+                    alt="OpenClaw"
+                    className="w-5 h-5"
+                  />
                   <span className="text-sm font-medium">OpenClaw</span>
                 </div>
                 <p className="text-xs text-gray-400 mb-2">
-                  Configure OpenClaw to use GPUShare
+                  Add GPUShare as custom provider
                 </p>
-                <Button
-                  onClick={() => {
-                    const setupText = `API Key: ${revealedKey}\nBase URL: ${API_URL}/v1`;
-                    navigator.clipboard.writeText(setupText);
-                    trigger("nudge");
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs"
-                >
-                  Copy Setup Info
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => {
+                      const config = JSON.stringify(
+                        {
+                          models: {
+                            providers: {
+                              gpushare: {
+                                baseUrl: `${API_URL}/v1`,
+                                apiKey: revealedKey,
+                                api: "openai-completions",
+                                models: [
+                                  {
+                                    id: "gpt-4",
+                                    name: "GPUShare GPT-4",
+                                    reasoning: false,
+                                    input: ["text"],
+                                    cost: {
+                                      input: 0,
+                                      output: 0,
+                                      cacheRead: 0,
+                                      cacheWrite: 0,
+                                    },
+                                    contextWindow: 128000,
+                                    maxTokens: 4096,
+                                  },
+                                ],
+                              },
+                            },
+                          },
+                        },
+                        null,
+                        2,
+                      );
+                      navigator.clipboard.writeText(config);
+                      trigger("nudge");
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs"
+                  >
+                    Copy models.json Config
+                  </Button>
+                  <a
+                    href="https://docs.openclaw.ai/concepts/model-providers"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-center text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    View Setup Guide →
+                  </a>
+                </div>
               </div>
             </div>
           </div>
