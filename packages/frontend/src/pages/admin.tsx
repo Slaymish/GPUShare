@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { admin, getHealth } from '../lib/api';
-import type { HealthResponse } from '../lib/api';
+import type { HealthResponse, PowerData } from '../lib/api';
 import { parseToken } from '../lib/auth';
 import type { AdminUserResponse, UserUpdateRequest } from '@shared/types/admin';
 import type { SystemStatsResponse } from '@shared/types/admin';
@@ -57,6 +57,14 @@ function getIntegrations(health: HealthResponse | null): Integration[] {
       setupUrl: '',
       setupLabel: 'Set BILLING_ENABLED=true in .env',
     },
+    {
+      key: 'tapo',
+      name: 'Tapo Smart Plug',
+      configured: i?.tapo ?? false,
+      description: 'Real-time energy monitoring via a TP-Link Tapo P110. Measures actual power draw for accurate cost tracking instead of estimates.',
+      setupUrl: 'https://www.tapo.com/en/product/smart-plug/tapo-p110/',
+      setupLabel: 'Get a Tapo P110',
+    },
   ];
 }
 
@@ -96,6 +104,9 @@ export function AdminPage() {
           <StatCard label="Queue Size" value={String(stats.jobs_in_queue)} />
         </div>
       )}
+
+      {/* Live Power — Tapo Smart Plug */}
+      {health?.power && <PowerWidget power={health.power} />}
 
       {/* Server Status */}
       {health && (
@@ -161,6 +172,46 @@ function OllamaStatus({ status }: { status: string }) {
   if (status === 'ready') return <span className="text-green-400">ready</span>;
   if (status === 'warming_up') return <span className="text-yellow-400">warming up</span>;
   return <span className="text-red-400">offline</span>;
+}
+
+function PowerWidget({ power }: { power: PowerData }) {
+  return (
+    <div className="bg-gray-800 rounded-xl p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <h3 className="text-sm font-semibold text-gray-200">Live Power</h3>
+        <span className="text-xs text-gray-500">via Tapo P110</span>
+        <span className="relative flex h-2 w-2 ml-1">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75 animate-ping" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+        </span>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div>
+          <div className="text-2xl font-bold">{power.current_watts}<span className="text-sm font-normal text-gray-400">W</span></div>
+          <div className="text-xs text-gray-500">Drawing now</div>
+        </div>
+        <div>
+          <div className="text-lg font-semibold">{power.today_kwh}<span className="text-sm font-normal text-gray-400"> kWh</span></div>
+          <div className="text-xs text-gray-500">Today</div>
+        </div>
+        <div>
+          <div className="text-lg font-semibold">{power.month_kwh}<span className="text-sm font-normal text-gray-400"> kWh</span></div>
+          <div className="text-xs text-gray-500">This month</div>
+        </div>
+        <div>
+          <div className="text-lg font-semibold text-green-400">${power.today_cost.toFixed(2)}</div>
+          <div className="text-xs text-gray-500">Cost today</div>
+        </div>
+        <div>
+          <div className="text-lg font-semibold text-green-400">${power.month_cost.toFixed(2)}</div>
+          <div className="text-xs text-gray-500">Cost this month</div>
+        </div>
+      </div>
+      <div className="mt-2 text-xs text-gray-600">
+        Rate: ${power.rate_per_kwh}/{power.currency} per kWh
+      </div>
+    </div>
+  );
 }
 
 function IntegrationTile({ integration }: { integration: Integration }) {

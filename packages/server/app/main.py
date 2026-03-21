@@ -64,12 +64,30 @@ async def health():
         ollama_status = "offline"
 
     # Check configured integrations
+    from app.lib.tapo import is_configured as tapo_configured, get_energy_summary
+
     integrations = {
         "stripe": bool(settings.STRIPE_SECRET_KEY and settings.STRIPE_SECRET_KEY != "sk_test_placeholder"),
         "r2": bool(settings.CLOUDFLARE_R2_ACCOUNT_ID and settings.CLOUDFLARE_R2_ACCOUNT_ID != "placeholder"),
         "resend": bool(settings.RESEND_API_KEY and settings.RESEND_API_KEY != "re_placeholder"),
         "billing": settings.BILLING_ENABLED,
+        "tapo": tapo_configured(),
     }
+
+    # Fetch live power data from Tapo smart plug
+    power = None
+    if integrations["tapo"]:
+        summary = await get_energy_summary()
+        if summary:
+            power = {
+                "current_watts": summary.current_watts,
+                "today_kwh": summary.today_kwh,
+                "month_kwh": summary.month_kwh,
+                "today_cost": summary.today_cost,
+                "month_cost": summary.month_cost,
+                "currency": settings.CURRENCY,
+                "rate_per_kwh": settings.ELECTRICITY_RATE_KWH,
+            }
 
     return {
         "status": "ok",
@@ -78,4 +96,5 @@ async def health():
         "ollama": ollama_status,
         "ollama_models": ollama_models,
         "integrations": integrations,
+        "power": power,
     }

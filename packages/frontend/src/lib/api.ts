@@ -7,6 +7,16 @@ import type { AdminUserResponse, UserUpdateRequest, AdjustBalanceRequest, System
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+export interface PowerData {
+  current_watts: number;
+  today_kwh: number;
+  month_kwh: number;
+  today_cost: number;
+  month_cost: number;
+  currency: string;
+  rate_per_kwh: number;
+}
+
 export interface HealthResponse {
   status: string;
   node: string;
@@ -18,7 +28,9 @@ export interface HealthResponse {
     r2: boolean;
     resend: boolean;
     billing: boolean;
+    tapo: boolean;
   };
+  power: PowerData | null;
 }
 
 export async function getHealth(): Promise<HealthResponse> {

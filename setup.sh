@@ -197,6 +197,19 @@ if confirm "Enable email notifications via Resend?"; then
   success "Email notifications configured."
 fi
 
+# Tapo smart plug
+TAPO_EMAIL=""
+TAPO_PASSWORD=""
+TAPO_DEVICE_IP=""
+
+if confirm "Do you have a Tapo P110 smart plug for real-time energy monitoring?"; then
+  echo "  Enter your TP-Link/Tapo account credentials and plug's local IP."
+  read -rp "  TAPO_EMAIL: " TAPO_EMAIL
+  read -rp "  TAPO_PASSWORD: " TAPO_PASSWORD
+  read -rp "  TAPO_DEVICE_IP (e.g. 192.168.1.50): " TAPO_DEVICE_IP
+  success "Tapo smart plug configured."
+fi
+
 # ── Step 8: Write .env ──────────────────────────────────────
 
 echo ""
@@ -236,12 +249,17 @@ STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
 STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
 
 # Cloudflare R2 (3D rendering file storage)
-R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
-R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
-R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+CLOUDFLARE_R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+CLOUDFLARE_R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
 
 # Email (Resend)
 RESEND_API_KEY=${RESEND_API_KEY}
+
+# Tapo Smart Plug (energy monitoring)
+TAPO_EMAIL=${TAPO_EMAIL}
+TAPO_PASSWORD=${TAPO_PASSWORD}
+TAPO_DEVICE_IP=${TAPO_DEVICE_IP}
 EOF
 
 success ".env written."

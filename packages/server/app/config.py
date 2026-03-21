@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     REQUIRE_APPROVAL: bool = True
     NODE_NAME: str = "My GPU Node"
 
+    # ── Tapo smart plug (energy monitoring) ──────────────────────────────
+    TAPO_EMAIL: str = ""
+    TAPO_PASSWORD: str = ""
+    TAPO_DEVICE_IP: str = ""
+
     # ── Cloudflare Tunnel ────────────────────────────────────────────────
     TUNNEL_TOKEN: str = ""
 
