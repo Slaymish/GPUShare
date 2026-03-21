@@ -1,6 +1,6 @@
 {
-  "name": "GPU Node",
-  "short_name": "GPU Node",
+  "name": "GPUShare",
+  "short_name": "GPUShare",
   "description": "GPU compute sharing — AI inference and 3D rendering",
   "start_url": "/",
   "display": "standalone",

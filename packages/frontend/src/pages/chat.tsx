@@ -12,8 +12,8 @@ interface Chat {
   createdAt: number;
 }
 
-const CHATS_KEY = "gpu_node_chats";
-const ACTIVE_CHAT_KEY = "gpu_node_active_chat";
+const CHATS_KEY = "gpushare_chats";
+const ACTIVE_CHAT_KEY = "gpushare_active_chat";
 
 function loadChats(): Chat[] {
   try {

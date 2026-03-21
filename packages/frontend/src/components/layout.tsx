@@ -5,6 +5,11 @@ import { useWebHaptics } from "../lib/haptics";
 import { billing, getHealth } from "../lib/api";
 import type { HealthResponse } from "../lib/api";
 import { router } from "../router";
+import {
+  branding,
+  status as statusConfig,
+  balanceThresholds,
+} from "../theme.config";
 
 type ServerStatus = "online" | "warming_up" | "degraded" | "offline";
 
@@ -51,23 +56,20 @@ function useServerStatus(authed: boolean): {
 }
 
 function StatusPill({ status }: { status: ServerStatus }) {
-  const config = {
-    online: { color: "bg-green-500", label: "Online", pulse: false },
-    warming_up: { color: "bg-yellow-500", label: "Warming up", pulse: true },
-    degraded: { color: "bg-orange-500", label: "Degraded", pulse: false },
-    offline: { color: "bg-red-500", label: "Offline", pulse: false },
-  }[status];
+  const config = statusConfig[status];
 
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-800/50 text-xs">
       <span className="relative flex h-2 w-2">
         {config.pulse && (
           <span
-            className={`absolute inline-flex h-full w-full rounded-full ${config.color} opacity-75 animate-ping`}
+            className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
+            style={{ backgroundColor: config.color }}
           />
         )}
         <span
-          className={`relative inline-flex h-2 w-2 rounded-full ${config.color}`}
+          className="relative inline-flex h-2 w-2 rounded-full"
+          style={{ backgroundColor: config.color }}
         />
       </span>
       <span className="text-gray-300">{config.label}</span>
@@ -242,7 +244,9 @@ export function Layout() {
       <aside className="hidden md:flex w-64 bg-gray-950 flex-col border-r border-gray-800">
         <div className="p-6 border-b border-gray-800">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tight">GPU Node</h1>
+            <h1 className="text-xl font-bold tracking-tight">
+              {branding.appName}
+            </h1>
             <StatusPill status={status} />
           </div>
         </div>
@@ -269,11 +273,11 @@ export function Layout() {
               <span className="text-gray-400">Balance: </span>
               <span
                 className={
-                  balance > 10
+                  balance > balanceThresholds.high
                     ? "text-green-400"
-                    : balance > 5
+                    : balance > balanceThresholds.medium
                       ? "text-yellow-400"
-                      : balance > 0
+                      : balance > balanceThresholds.low
                         ? "text-orange-400"
                         : "text-red-400"
                 }
@@ -308,7 +312,7 @@ export function Layout() {
               <MenuIcon className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-bold tracking-tight truncate">
-              GPU Node
+              {branding.appName}
             </h1>
           </div>
           <div className="flex-shrink-0">
@@ -326,7 +330,9 @@ export function Layout() {
           />
           <div className="fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] bg-gray-950 flex flex-col md:hidden">
             <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-              <h1 className="text-lg font-bold tracking-tight">GPU Node</h1>
+              <h1 className="text-lg font-bold tracking-tight">
+                {branding.appName}
+              </h1>
               <button
                 onClick={() => {
                   trigger("nudge");

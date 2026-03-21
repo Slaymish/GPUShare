@@ -1,5 +1,5 @@
 {
-  "name": "gpu-node-frontend",
+  "name": "gpushare-frontend",
   "private": true,
   "type": "module",
   "scripts": {

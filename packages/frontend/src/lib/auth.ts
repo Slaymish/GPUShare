@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'gpu_node_token';
+const TOKEN_KEY = "gpushare_token";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -30,7 +30,7 @@ export function parseToken(): TokenPayload | null {
   const token = getToken();
   if (!token) return null;
   try {
-    const base64 = token.split('.')[1];
+    const base64 = token.split(".")[1];
     const json = atob(base64);
     return JSON.parse(json) as TokenPayload;
   } catch {
