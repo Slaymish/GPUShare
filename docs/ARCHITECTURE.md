@@ -21,14 +21,17 @@ GPU Node separates concerns cleanly across three layers: a static frontend hoste
 Vercel (always on, free tier)          Your PC (via Cloudflare Tunnel)
 ─────────────────────────────          ──────────────────────────────────────
 
-React frontend                         FastAPI proxy
+React frontend (Vite + TanStack Router)  FastAPI proxy
 
-  Chat UI ──────────────────────────►  /v1/inference/*  ──►  Ollama
-  Render UI ────────────────────────►  /v1/render/*     ──►  Blender CLI
-  Account dashboard                    /v1/admin/*
+  Login / Signup ─────────────────────►  /v1/auth/*
+  Chat UI ────────────────────────────►  /v1/inference/*  ──►  Ollama
+  Render UI ──────────────────────────►  /v1/render/*     ──►  Blender CLI
+  Account dashboard ──────────────────►  /v1/account/*
+  Admin dashboard ────────────────────►  /v1/admin/*
 
-  Auth (JWT)                           Job worker process
-                                       Cloudflare Tunnel daemon
+  Auth (JWT + API key)                   Job worker process
+  Stripe ─────────────────────────────►  /v1/webhooks/stripe
+                                         Cloudflare Tunnel daemon
 
 Neon / Supabase (always on)            Cloudflare R2 (file storage)
 
@@ -92,48 +95,69 @@ FastAPI proxy
 ```
 gpu-node/
 ├── packages/
-│   ├── frontend/                    # Vercel — React + Tailwind
-│   |   ├── src/
-│   |   |   ├── pages/
-│   |   |   |   ├── chat.tsx         # Chat UI
-│   |   |   |   ├── render.tsx       # Render submission + job list
-│   |   |   |   ├── account.tsx      # Balance, usage, invoices, API keys
-│   |   |   |   └── admin.tsx        # Admin dashboard (owner only)
-│   |   ├── components/
-│   |   └── lib/
-│   |       ├── api.ts           # Typed fetch wrappers
-│   |       └── auth.ts          # JWT handling
-│   └── vercel.json
+│   ├── frontend/                    # Vercel — Vite + React + TanStack Router + Tailwind
+│   │   ├── src/
+│   │   │   ├── pages/
+│   │   │   │   ├── login.tsx        # Login / signup form
+│   │   │   │   ├── chat.tsx         # Chat UI with streaming
+│   │   │   │   ├── render.tsx       # Render submission + job list
+│   │   │   │   ├── account.tsx      # Balance, usage, invoices, API keys
+│   │   │   │   └── admin.tsx        # Admin dashboard (owner only)
+│   │   │   ├── components/
+│   │   │   │   └── layout.tsx       # Dark sidebar layout + navigation
+│   │   │   ├── lib/
+│   │   │   │   ├── api.ts           # Typed fetch wrappers
+│   │   │   │   └── auth.ts          # JWT token management
+│   │   │   ├── router.tsx           # TanStack Router setup + route guards
+│   │   │   ├── main.tsx             # React entry point
+│   │   │   └── app.css              # Tailwind v4 import
+│   │   ├── index.html
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   ├── vite.config.ts
+│   │   └── vercel.json
 │   ├── server/                      # Runs on your PC
-│   |   ├── app/
-│   |   |   ├── main.py              # FastAPI entry point
-│   |   ├── routers/
-│   |   |   ├── inference.py     # /v1/inference/* — Ollama proxy
-│   |   |   ├── render.py        # /v1/render/* — job submission
-│   |   |   ├── auth.py          # Login, signup, API keys
-│   |   |   ├── billing.py       # Balance, top-up, Stripe webhooks
-│   |   |   └── admin.py         # Admin endpoints
-│   |   ├── workers/
-│   |   |   └── render_worker.py # Async job processor
-│   |   ├── models/              # SQLAlchemy ORM models
-│   |   ├── schemas/             # Pydantic request/response schemas
-│   |   └── lib/
-│   |       ├── billing.py       # Ledger writes, cost calculation
-│   |       ├── r2.py            # Cloudflare R2 client
-│   |       ├── blender.py       # Blender CLI wrapper
-│   |       └── ollama.py        # Ollama client + token counting
-│   |   ├── alembic/                 # DB migrations
-│   |   ├── Dockerfile
-│   |   └── requirements.txt
-|   |-- shared/
-│   |   |-- types/
-│   |   |   |-- inference.ts
-│   |   |   |-- render.ts
-│   |   |   |-- billing.ts
-│   |   |   |-- auth.ts
-│   |   |   |-- admin.ts
-├── docker-compose.yml           # Spins up server + Ollama + worker
-├── .env.example                 # All config variables documented
+│   │   ├── app/
+│   │   │   ├── main.py              # FastAPI entry point
+│   │   │   ├── config.py            # Pydantic-settings env loader
+│   │   │   ├── database.py          # Async SQLAlchemy engine + session
+│   │   │   ├── routers/
+│   │   │   │   ├── inference.py     # /v1/inference/* — Ollama proxy
+│   │   │   │   ├── render.py        # /v1/render/* — job submission
+│   │   │   │   ├── auth.py          # Login, signup, API keys, auth deps
+│   │   │   │   ├── billing.py       # Balance, top-up, Stripe webhooks
+│   │   │   │   └── admin.py         # Admin endpoints
+│   │   │   ├── workers/
+│   │   │   │   └── render_worker.py # Async job processor
+│   │   │   ├── models/
+│   │   │   │   └── models.py        # SQLAlchemy ORM models
+│   │   │   ├── schemas/             # Pydantic request/response schemas
+│   │   │   │   ├── auth.py
+│   │   │   │   ├── billing.py
+│   │   │   │   ├── inference.py
+│   │   │   │   ├── render.py
+│   │   │   │   └── admin.py
+│   │   │   └── lib/
+│   │   │       ├── billing.py       # Ledger writes, cost calculation
+│   │   │       ├── r2.py            # Cloudflare R2 client
+│   │   │       ├── blender.py       # Blender CLI wrapper
+│   │   │       └── ollama.py        # Ollama client + token counting
+│   │   ├── alembic/                 # DB migrations
+│   │   │   ├── env.py
+│   │   │   ├── script.py.mako
+│   │   │   └── versions/
+│   │   ├── alembic.ini
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   └── shared/
+│       └── types/                   # TypeScript type definitions
+│           ├── inference.ts
+│           ├── render.ts
+│           ├── billing.ts
+│           ├── auth.ts
+│           └── admin.ts
+├── docker-compose.yml               # Spins up server + Ollama + worker
+├── .env.example                     # All config variables documented
 └── README.md
 ```
 
@@ -149,6 +173,7 @@ Postgres (hosted on Neon or Supabase free tier). All financial data uses an appe
 id                  uuid PRIMARY KEY DEFAULT gen_random_uuid()
 email               text UNIQUE NOT NULL
 name                text
+password_hash       text NOT NULL                -- bcrypt hash
 status              text DEFAULT 'pending'       -- pending|active|suspended
 role                text DEFAULT 'user'          -- user|admin
 stripe_customer_id  text
@@ -288,7 +313,18 @@ All rates are derived from config at runtime — no hardcoded prices. Changing y
 
 ## 6. API Reference
 
-All endpoints require a `Bearer` token (JWT from login) or `X-API-Key` header. The inference endpoints are OpenAI-compatible — any client that works with OpenAI works here.
+Most endpoints require a `Bearer` token (JWT from login) or `X-API-Key` header. The inference endpoints are OpenAI-compatible — any client that works with OpenAI works here.
+
+### Auth
+
+| Method | Path                        | Description                    | Auth     |
+| ------ | --------------------------- | ------------------------------ | -------- |
+| POST   | `/v1/auth/signup`           | Register new account           | None     |
+| POST   | `/v1/auth/login`            | Authenticate, receive JWT      | None     |
+| GET    | `/v1/auth/me`               | Current user profile           | JWT/Key  |
+| POST   | `/v1/auth/api-keys`         | Create new API key             | JWT/Key  |
+| GET    | `/v1/auth/api-keys`         | List API keys (non-revoked)    | JWT/Key  |
+| DELETE | `/v1/auth/api-keys/:id`     | Revoke API key                 | JWT/Key  |
 
 ### Inference
 
@@ -299,24 +335,43 @@ All endpoints require a `Bearer` token (JWT from login) or `X-API-Key` header. T
 
 ### Render
 
-| Method | Path                  | Description                                          | Auth |
-| ------ | --------------------- | ---------------------------------------------------- | ---- |
-| POST   | `/v1/render/jobs`     | Submit new render job (multipart, .blend + settings) | JWT  |
-| GET    | `/v1/render/jobs`     | List your jobs with status + progress                | JWT  |
-| GET    | `/v1/render/jobs/:id` | Single job detail + download URL                     | JWT  |
-| DELETE | `/v1/render/jobs/:id` | Cancel queued job                                    | JWT  |
+| Method | Path                  | Description                                          | Auth     |
+| ------ | --------------------- | ---------------------------------------------------- | -------- |
+| POST   | `/v1/render/jobs`     | Submit new render job (multipart, .blend + settings) | JWT/Key  |
+| GET    | `/v1/render/jobs`     | List your jobs with status + progress                | JWT/Key  |
+| GET    | `/v1/render/jobs/:id` | Single job detail + download URL                     | JWT/Key  |
+| DELETE | `/v1/render/jobs/:id` | Cancel queued job                                    | JWT/Key  |
 
 ### Account
 
-| Method | Path                       | Description                                | Auth |
-| ------ | -------------------------- | ------------------------------------------ | ---- |
-| GET    | `/v1/account/balance`      | Current balance + this-month summary       | JWT  |
-| GET    | `/v1/account/usage`        | Usage log with filters (date, model, type) | JWT  |
-| GET    | `/v1/account/invoices`     | Invoice history                            | JWT  |
-| POST   | `/v1/account/topup`        | Initiate Stripe Checkout top-up            | JWT  |
-| GET    | `/v1/account/api-keys`     | List API keys                              | JWT  |
-| POST   | `/v1/account/api-keys`     | Create new API key                         | JWT  |
-| DELETE | `/v1/account/api-keys/:id` | Revoke API key                             | JWT  |
+| Method | Path                   | Description                          | Auth     |
+| ------ | ---------------------- | ------------------------------------ | -------- |
+| GET    | `/v1/account/balance`  | Current balance + this-month summary | JWT/Key  |
+| GET    | `/v1/account/usage`    | Usage log (paginated, limit/offset)  | JWT/Key  |
+| GET    | `/v1/account/invoices` | Invoice history                      | JWT/Key  |
+| POST   | `/v1/account/topup`    | Initiate Stripe Checkout top-up      | JWT/Key  |
+
+### Admin
+
+| Method | Path                                  | Description                     | Auth  |
+| ------ | ------------------------------------- | ------------------------------- | ----- |
+| GET    | `/v1/admin/users`                     | List all users with balances    | Admin |
+| GET    | `/v1/admin/users/:id`                 | Single user with balance        | Admin |
+| PATCH  | `/v1/admin/users/:id`                 | Update user fields              | Admin |
+| POST   | `/v1/admin/users/:id/adjust-balance`  | Adjust user balance             | Admin |
+| GET    | `/v1/admin/stats`                     | System-wide statistics          | Admin |
+
+### Webhooks
+
+| Method | Path                   | Description                  | Auth            |
+| ------ | ---------------------- | ---------------------------- | --------------- |
+| POST   | `/v1/webhooks/stripe`  | Stripe event receiver        | Stripe signature |
+
+### Health
+
+| Method | Path      | Description          | Auth |
+| ------ | --------- | -------------------- | ---- |
+| GET    | `/health` | Server health check  | None |
 
 ---
 
@@ -325,7 +380,9 @@ All endpoints require a `Bearer` token (JWT from login) or `X-API-Key` header. T
 ### API key storage
 
 - Raw API keys are shown once on creation and never stored
-- Only the bcrypt hash is persisted in `api_keys.key_hash`
+- Key format: `gn_{uuid}_{random}` — the UUID portion matches the `api_keys.id` column for fast lookup
+- Only the bcrypt hash of the full key is persisted in `api_keys.key_hash`
+- To authenticate: extract the UUID from the key, look up the row by `id`, then bcrypt-verify the full key against `key_hash`
 - Keys are prefixed with `gn_` for easy identification in logs
 
 ### Blender file sanitisation
@@ -373,7 +430,7 @@ Copy `.env.example` and fill in the required fields before first run.
 ### Required
 
 ```env
-DATABASE_URL=postgresql://user:pass@host:5432/gpunode
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/gpunode
 JWT_SECRET=<random 64-char string>
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
@@ -429,7 +486,7 @@ ADMIN_EMAIL=you@example.com        # receives alerts and approvals
 | API server        | FastAPI (Python)           | Async, streaming support, great for GPU workloads   | Free       |
 | Database          | Postgres via Neon          | Reliable, free tier, Postgres for financial data    | Free       |
 | File storage      | Cloudflare R2              | Free egress (unlike S3), S3-compatible API, cheap   | ~$0/mo     |
-| Frontend          | React + Tailwind on Vercel | Static deploy, free tier, instant CDN               | Free       |
+| Frontend          | Vite + React + TanStack Router + Tailwind v4 on Vercel | Static deploy, free tier, instant CDN    | Free       |
 | Tunnel            | Cloudflare Tunnel          | No port forwarding, survives IP changes, free       | Free       |
 | Payments          | Stripe                     | Invoicing, webhooks, Customer Portal all built in   | 2.9% + 30c |
 | Email             | Resend                     | Simple API, free tier, great deliverability         | Free       |
