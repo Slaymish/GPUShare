@@ -23,3 +23,24 @@ export interface SystemStatsResponse {
   total_render_cost_nzd: number;
   jobs_in_queue: number;
 }
+
+export interface InviteCreateRequest {
+  name?: string;
+  expires_in_days?: number;
+}
+
+export interface InviteCreateResponse {
+  invite_url: string;
+  token: string;
+  name?: string;
+  expires_at?: string;
+}
+
+export interface InviteListResponse {
+  id: string;
+  token: string;
+  name?: string;
+  created_at: string;
+  claimed_at?: string;
+  expires_at?: string;
+}

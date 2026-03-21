@@ -11,6 +11,20 @@ Share your GPU compute — AI inference and 3D rendering — with trusted users 
 
 Costs are derived from your actual electricity rate and GPU wattage — no margins, no markups.
 
+## Use with OpenClaw
+
+If someone has shared their GPUShare server with you:
+
+1. `clawhub install gpushare`
+2. Add to your OpenClaw config:
+   ```
+   GPUSHARE_API_URL=<url they gave you>
+   GPUSHARE_API_KEY=<key they gave you>
+   ```
+3. Ask your agent to use GPUShare.
+
+That's it. Your agent can now run models on their GPU.
+
 ## How it works
 
 Your PC runs a FastAPI proxy behind a Cloudflare Tunnel. A React frontend on Vercel handles the UI. A Postgres database (Neon/Supabase free tier) and Cloudflare R2 handle persistence. Stripe handles billing.
@@ -217,18 +231,21 @@ Users run a postpaid balance. They get soft warnings at $0 and -$5, and a hard b
 
 ## API
 
-The inference API is OpenAI-compatible — any client that works with OpenAI's API works here without modification.
+The inference API is OpenAI-compatible — any client that works with OpenAI's API works here without modification. Both standard (`/v1/chat/completions`) and namespaced (`/v1/inference/chat/completions`) paths are supported.
 
 ```bash
-# Chat completion
-curl https://gpu.yourdomain.com/v1/inference/chat/completions \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+# Chat completion (standard OpenAI path)
+curl https://gpu.yourdomain.com/v1/chat/completions \
+  -H "Authorization: Bearer gpus_sk_YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "qwen2.5:14b", "messages": [{"role": "user", "content": "Hello"}]}'
 
 # List models
-curl https://gpu.yourdomain.com/v1/inference/models \
-  -H "Authorization: Bearer YOUR_API_KEY"
+curl https://gpu.yourdomain.com/v1/models \
+  -H "Authorization: Bearer gpus_sk_YOUR_API_KEY"
+
+# Check server status (no auth required)
+curl https://gpu.yourdomain.com/v1/status
 ```
 
 Render jobs, account management, and admin endpoints are documented in [ARCHITECTURE.md](./ARCHITECTURE.md#6-api-reference).

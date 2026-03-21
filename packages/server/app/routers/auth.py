@@ -63,25 +63,37 @@ async def get_current_user(
 ) -> User:
     """Resolve the current user from a Bearer JWT *or* an X-API-Key header."""
 
-    # --- Try API key first (prefix "gn_") ---
-    if x_api_key and x_api_key.startswith("gn_"):
-        # Key format: gn_{uuid}_{random}
-        parts = x_api_key.split("_", 2)  # ["gn", "<uuid>", "<random>"]
-        if len(parts) != 3:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Malformed API key")
-
-        try:
-            key_id = uuid.UUID(parts[1])
-        except ValueError:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Malformed API key")
+    # --- Helper: resolve user from an API key string ---
+    async def _resolve_api_key(raw_key: str) -> User | None:
+        """Validate an API key (gpus_sk_ or legacy gn_ prefix) and return the user."""
+        if raw_key.startswith("gpus_sk_"):
+            # Key format: gpus_sk_{uuid}_{random}
+            parts = raw_key.split("_", 3)  # ["gpus", "sk", "<uuid>", "<random>"]
+            if len(parts) != 4:
+                return None
+            try:
+                key_id = uuid.UUID(parts[2])
+            except ValueError:
+                return None
+        elif raw_key.startswith("gn_"):
+            # Legacy key format: gn_{uuid}_{random}
+            parts = raw_key.split("_", 2)  # ["gn", "<uuid>", "<random>"]
+            if len(parts) != 3:
+                return None
+            try:
+                key_id = uuid.UUID(parts[1])
+            except ValueError:
+                return None
+        else:
+            return None
 
         result = await db.execute(
             select(ApiKey).where(ApiKey.id == key_id, ApiKey.revoked_at.is_(None))
         )
         api_key_row = result.scalar_one_or_none()
 
-        if api_key_row is None or not pwd_context.verify(x_api_key, api_key_row.key_hash):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+        if api_key_row is None or not pwd_context.verify(raw_key, api_key_row.key_hash):
+            return None
 
         # Update last_used timestamp
         api_key_row.last_used = datetime.now(timezone.utc)
@@ -89,12 +101,28 @@ async def get_current_user(
         result = await db.execute(select(User).where(User.id == api_key_row.user_id))
         user = result.scalar_one_or_none()
         if user is None or user.status != "active":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive")
+            return None
         return user
 
-    # --- Try Bearer JWT ---
+    # --- Try X-API-Key header first ---
+    if x_api_key and (x_api_key.startswith("gpus_sk_") or x_api_key.startswith("gn_")):
+        user = await _resolve_api_key(x_api_key)
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+        return user
+
+    # --- Try Bearer token (API key or JWT) ---
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:]
+
+        # Check if the Bearer token is an API key
+        if token.startswith("gpus_sk_") or token.startswith("gn_"):
+            user = await _resolve_api_key(token)
+            if user is None:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+            return user
+
+        # Otherwise, treat as JWT
         try:
             payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[JWT_ALGORITHM])
             user_id = uuid.UUID(payload["sub"])
@@ -236,7 +264,7 @@ async def create_api_key(
     """Generate a new API key. The raw key is returned once and cannot be retrieved again."""
 
     key_id = uuid.uuid4()
-    raw_key = f"gn_{key_id}_{secrets.token_urlsafe(32)}"
+    raw_key = f"gpus_sk_{key_id}_{secrets.token_urlsafe(32)}"
     key_hash = pwd_context.hash(raw_key)
 
     api_key = ApiKey(

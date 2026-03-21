@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import admin, auth, billing, inference, render
+from app.routers import admin, auth, billing, inference, invite, openai_compat, render, status
 
 
 @asynccontextmanager
@@ -49,10 +49,13 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(inference.router)
+app.include_router(openai_compat.router)
+app.include_router(status.router)
 app.include_router(render.router)
 app.include_router(billing.router)
 app.include_router(billing.webhook_router)
 app.include_router(admin.router)
+app.include_router(invite.router)
 
 
 @app.get("/health")

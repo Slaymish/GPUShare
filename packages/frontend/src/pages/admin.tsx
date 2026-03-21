@@ -4,8 +4,12 @@ import { admin, getHealth } from "../lib/api";
 import type { HealthResponse, PowerData } from "../lib/api";
 import { parseToken } from "../lib/auth";
 import { Button, Input } from "../components/ui";
-import type { AdminUserResponse, UserUpdateRequest } from "@shared/types/admin";
-import type { SystemStatsResponse } from "@shared/types/admin";
+import type {
+  AdminUserResponse,
+  UserUpdateRequest,
+  SystemStatsResponse,
+  InviteListResponse,
+} from "@shared/types/admin";
 
 interface Integration {
   key: string;
@@ -89,6 +93,7 @@ export function AdminPage() {
   const [stats, setStats] = useState<SystemStatsResponse | null>(null);
   const [users, setUsers] = useState<AdminUserResponse[]>([]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [invites, setInvites] = useState<InviteListResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const currentUserId = parseToken()?.sub ?? "";
@@ -105,6 +110,10 @@ export function AdminPage() {
         .catch(() => {}),
       getHealth()
         .then(setHealth)
+        .catch(() => {}),
+      admin
+        .listInvites()
+        .then(setInvites)
         .catch(() => {}),
     ]).finally(() => setLoading(false));
   }
@@ -171,6 +180,9 @@ export function AdminPage() {
           ))}
         </div>
       </div>
+
+      {/* Invite Links */}
+      <InviteSection invites={invites} onRefresh={fetchData} />
 
       {/* Users Table */}
       <div>
@@ -312,6 +324,138 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <div className="bg-gray-800 rounded-xl p-4">
       <div className="text-xs text-gray-400 mb-1">{label}</div>
       <div className="text-2xl font-bold">{value}</div>
+    </div>
+  );
+}
+
+function InviteSection({
+  invites,
+  onRefresh,
+}: {
+  invites: InviteListResponse[];
+  onRefresh: () => void;
+}) {
+  const { trigger } = useWebHaptics();
+  const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
+
+  async function handleCreate() {
+    setCreating(true);
+    try {
+      await admin.createInvite({ name: name || undefined, expires_in_days: 7 });
+      trigger("success");
+      setName("");
+      onRefresh();
+    } catch {}
+    setCreating(false);
+  }
+
+  async function handleDelete(id: string) {
+    trigger("buzz");
+    await admin.deleteInvite(id).catch(() => {});
+    onRefresh();
+  }
+
+  function copyInviteUrl(token: string) {
+    const url = `${window.location.origin}/invite/${token}`;
+    navigator.clipboard.writeText(url);
+    setCopiedToken(token);
+    trigger("nudge");
+    setTimeout(() => setCopiedToken(null), 2000);
+  }
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-gray-300 mb-3">
+        Invite Links
+      </h3>
+      <div className="bg-gray-800 rounded-xl p-5 space-y-4">
+        <p className="text-xs text-gray-400">
+          Generate one-time invite links for new users. They'll get auto-provisioned with an account and API key.
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          <Input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Recipient name (optional)"
+            className="flex-1 min-w-[200px]"
+          />
+          <Button
+            onClick={handleCreate}
+            disabled={creating}
+            size="sm"
+            className="whitespace-nowrap"
+          >
+            {creating ? "Creating..." : "Create Invite"}
+          </Button>
+        </div>
+
+        {invites.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[500px]">
+              <thead>
+                <tr className="border-b border-gray-700 text-gray-400 text-left">
+                  <th className="py-2 font-medium">Name</th>
+                  <th className="py-2 font-medium">Created</th>
+                  <th className="py-2 font-medium">Status</th>
+                  <th className="py-2 font-medium">Expires</th>
+                  <th className="py-2 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {invites.map((inv) => (
+                  <tr key={inv.id} className="border-b border-gray-700/50">
+                    <td className="py-2">{inv.name || "-"}</td>
+                    <td className="py-2 text-gray-400">
+                      {new Date(inv.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="py-2">
+                      {inv.claimed_at ? (
+                        <span className="text-green-400 text-xs">Claimed</span>
+                      ) : inv.expires_at &&
+                        new Date(inv.expires_at) < new Date() ? (
+                        <span className="text-red-400 text-xs">Expired</span>
+                      ) : (
+                        <span className="text-yellow-400 text-xs">Pending</span>
+                      )}
+                    </td>
+                    <td className="py-2 text-gray-400 text-xs">
+                      {inv.expires_at
+                        ? new Date(inv.expires_at).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td className="py-2 space-x-2">
+                      {!inv.claimed_at && (
+                        <>
+                          <Button
+                            onClick={() => copyInviteUrl(inv.token)}
+                            variant="ghost"
+                            size="sm"
+                            className="text-blue-400 hover:text-blue-300 text-xs h-auto py-1"
+                          >
+                            {copiedToken === inv.token ? "Copied!" : "Copy Link"}
+                          </Button>
+                          <Button
+                            onClick={() => handleDelete(inv.id)}
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-400 hover:text-red-300 text-xs h-auto py-1"
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

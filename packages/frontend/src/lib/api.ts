@@ -30,6 +30,9 @@ import type {
   UserUpdateRequest,
   AdjustBalanceRequest,
   SystemStatsResponse,
+  InviteCreateRequest,
+  InviteCreateResponse,
+  InviteListResponse,
 } from "@shared/types/admin";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -279,6 +282,11 @@ export const admin = {
     patch<AdminUserResponse>(`/v1/admin/users/${id}`, data),
   adjustBalance: (id: string, data: AdjustBalanceRequest) =>
     post<{ balance_nzd: number }>(`/v1/admin/users/${id}/adjust-balance`, data),
+  // Invites
+  listInvites: () => get<InviteListResponse[]>("/v1/admin/invites"),
+  createInvite: (data: InviteCreateRequest) =>
+    post<InviteCreateResponse>("/v1/admin/invites", data),
+  deleteInvite: (id: string) => del<void>(`/v1/admin/invites/${id}`),
 };
 
 export { ApiError };
