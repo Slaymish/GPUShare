@@ -19,7 +19,7 @@ export function AccountPage() {
   const [limitSaving, setLimitSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const billingEnabled = health?.integrations?.billing ?? false;
+  const billingEnabled = (health?.integrations?.billing && health?.integrations?.stripe) ?? false;
 
   function fetchAll() {
     Promise.all([

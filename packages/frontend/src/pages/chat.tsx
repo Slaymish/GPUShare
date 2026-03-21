@@ -56,7 +56,7 @@ export function ChatPage() {
       setModels(res.data);
       if (res.data.length > 0 && !selectedModel) setSelectedModel(res.data[0].id);
     }).catch(() => {});
-    getHealth().then(h => setBillingEnabled(h.integrations.billing)).catch(() => {});
+    getHealth().then(h => setBillingEnabled(h.integrations.billing && h.integrations.stripe)).catch(() => {});
   }, []);
 
   useEffect(() => {

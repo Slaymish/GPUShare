@@ -74,7 +74,7 @@ export function Layout() {
   const [balance, setBalance] = useState<number | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const { status, health } = useServerStatus(authed);
-  const billingEnabled = health?.integrations?.billing ?? false;
+  const billingEnabled = (health?.integrations?.billing && health?.integrations?.stripe) ?? false;
 
   useEffect(() => {
     if (!authed) return;
