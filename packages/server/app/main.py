@@ -39,6 +39,7 @@ app.include_router(auth.router)
 app.include_router(inference.router)
 app.include_router(render.router)
 app.include_router(billing.router)
+app.include_router(billing.webhook_router)
 app.include_router(admin.router)
 
 
