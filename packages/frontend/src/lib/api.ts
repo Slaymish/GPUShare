@@ -19,6 +19,7 @@ import type {
   ChatCompletionRequest,
   ChatCompletionResponse,
   ChatCompletionChunk,
+  QueuePositionEvent,
   ModelsResponse,
 } from "@shared/types/inference";
 import type {
@@ -199,7 +200,7 @@ export const inference = {
     post<ChatCompletionResponse>("/v1/inference/chat/completions", data),
   chatCompletionStream: async function* (
     data: ChatCompletionRequest,
-  ): AsyncGenerator<ChatCompletionChunk> {
+  ): AsyncGenerator<ChatCompletionChunk | QueuePositionEvent> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -235,7 +236,12 @@ export const inference = {
         const payload = trimmed.slice(6);
         if (payload === "[DONE]") return;
         try {
-          yield JSON.parse(payload) as ChatCompletionChunk;
+          const parsed = JSON.parse(payload);
+          if ("queue_position" in parsed) {
+            yield parsed as QueuePositionEvent;
+          } else {
+            yield parsed as ChatCompletionChunk;
+          }
         } catch {
           // skip malformed chunks
         }

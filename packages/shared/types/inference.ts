@@ -50,6 +50,10 @@ export interface ChatCompletionChunk {
   choices: StreamChoice[];
 }
 
+export interface QueuePositionEvent {
+  queue_position: number;
+}
+
 export interface ModelInfo {
   id: string;
   object: string;

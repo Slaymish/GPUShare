@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
 import uuid
@@ -27,6 +28,7 @@ from app.lib.openrouter import (
     is_openrouter_model,
     list_models as openrouter_list_models,
 )
+from app.lib.inference_queue import QueueEntry, gpu_queue
 from app.models import UsageLog, User
 from app.routers.auth import get_current_user
 from app.schemas.inference import (
@@ -82,6 +84,7 @@ async def create_chat_completion(
                 user=user,
                 db=db,
                 use_openrouter=bool(use_openrouter),
+                queue_entry=None if use_openrouter else QueueEntry(),
             ),
             media_type="text/event-stream",
         )
@@ -98,10 +101,15 @@ async def create_chat_completion(
         output_tokens = usage.get("completion_tokens", count_tokens(assistant_content))
         input_tokens = usage.get("prompt_tokens", input_tokens)
     else:
-        result = await ollama_chat(
-            model=body.model, messages=messages,
-            temperature=body.temperature, max_tokens=body.max_tokens,
-        )
+        entry = QueueEntry()
+        await gpu_queue.acquire(entry)
+        try:
+            result = await ollama_chat(
+                model=body.model, messages=messages,
+                temperature=body.temperature, max_tokens=body.max_tokens,
+            )
+        finally:
+            gpu_queue.release(entry)
         assistant_content = result.get("message", {}).get("content", "")
         output_tokens = count_tokens(assistant_content)
 
@@ -175,6 +183,7 @@ async def _stream_response(
     user: User,
     db: AsyncSession,
     use_openrouter: bool = False,
+    queue_entry: QueueEntry | None = None,
 ) -> AsyncGenerator[str, None]:
     """Generate SSE chunks for a streaming chat completion."""
     settings = get_settings()
@@ -182,69 +191,92 @@ async def _stream_response(
     created = int(time.time())
     collected_content = ""
 
-    stream_fn = openrouter_stream if use_openrouter else ollama_stream
+    try:
+        # --- Queue wait (local models only) ---
+        if queue_entry is not None:
+            gpu_queue._waiters.append(queue_entry)
+            if gpu_queue._waiters[0] is queue_entry:
+                queue_entry.event.set()
 
-    async for chunk in stream_fn(
-        model=model,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    ):
-        if use_openrouter:
-            # OpenRouter returns OpenAI format directly
-            content = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
-            done = chunk.get("choices", [{}])[0].get("finish_reason") is not None
-        else:
-            # Ollama format
-            content = chunk.get("message", {}).get("content", "")
-            done = chunk.get("done", False)
+            while not queue_entry.event.is_set():
+                pos = gpu_queue.position(queue_entry)
+                yield f"data: {json.dumps({'queue_position': pos})}\n\n"
+                try:
+                    await asyncio.wait_for(
+                        asyncio.shield(queue_entry.event.wait()),
+                        timeout=2.0,
+                    )
+                except asyncio.TimeoutError:
+                    pass
 
-        if content:
-            collected_content += content
+            # Signal that we're now running
+            yield f"data: {json.dumps({'queue_position': 0})}\n\n"
 
-        finish_reason = "stop" if done else None
+        # --- Stream the completion ---
+        stream_fn = openrouter_stream if use_openrouter else ollama_stream
 
-        sse_chunk = {
-            "id": completion_id,
-            "object": "chat.completion.chunk",
-            "created": created,
-            "model": model,
-            "choices": [
-                {
-                    "index": 0,
-                    "delta": {"content": content} if content else {},
-                    "finish_reason": finish_reason,
-                }
-            ],
-        }
+        async for chunk in stream_fn(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        ):
+            if use_openrouter:
+                content = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                done = chunk.get("choices", [{}])[0].get("finish_reason") is not None
+            else:
+                content = chunk.get("message", {}).get("content", "")
+                done = chunk.get("done", False)
 
-        yield f"data: {json.dumps(sse_chunk)}\n\n"
+            if content:
+                collected_content += content
 
-    # After stream ends, record usage
-    output_tokens = count_tokens(collected_content)
-    cost, kwh = _calculate_cost(model, input_tokens, output_tokens, use_openrouter=use_openrouter)
+            finish_reason = "stop" if done else None
 
-    usage_log = UsageLog(
-        user_id=user.id,
-        model=model,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cost_nzd=cost,
-        kwh=kwh,
-    )
-    db.add(usage_log)
+            sse_chunk = {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"content": content} if content else {},
+                        "finish_reason": finish_reason,
+                    }
+                ],
+            }
 
-    if settings.BILLING_ENABLED:
-        await write_ledger_entry(
-            db=db,
+            yield f"data: {json.dumps(sse_chunk)}\n\n"
+
+        # --- Record usage ---
+        output_tokens = count_tokens(collected_content)
+        cost, kwh = _calculate_cost(model, input_tokens, output_tokens, use_openrouter=use_openrouter)
+
+        usage_log = UsageLog(
             user_id=user.id,
-            amount=-cost,
-            entry_type="inference_usage",
-            description=f"Inference: {model} ({input_tokens}+{output_tokens} tokens)",
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_nzd=cost,
+            kwh=kwh,
         )
-    await db.commit()
+        db.add(usage_log)
 
-    yield "data: [DONE]\n\n"
+        if settings.BILLING_ENABLED:
+            await write_ledger_entry(
+                db=db,
+                user_id=user.id,
+                amount=-cost,
+                entry_type="inference_usage",
+                description=f"Inference: {model} ({input_tokens}+{output_tokens} tokens)",
+            )
+        await db.commit()
+
+        yield "data: [DONE]\n\n"
+    finally:
+        if queue_entry is not None:
+            gpu_queue.release(queue_entry)
 
 
 # ---------------------------------------------------------------------------

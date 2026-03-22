@@ -64,6 +64,7 @@ export function ChatPage() {
   );
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [billingEnabled, setBillingEnabled] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
 
@@ -179,6 +180,12 @@ export function ChatPage() {
       });
 
       for await (const chunk of stream) {
+        if ("queue_position" in chunk) {
+          setQueuePosition(chunk.queue_position);
+          continue;
+        }
+        setQueuePosition(null);
+
         const delta = chunk.choices[0]?.delta?.content;
         if (delta) {
           fullContent += delta;
@@ -203,6 +210,7 @@ export function ChatPage() {
       }));
     } finally {
       setStreaming(false);
+      setQueuePosition(null);
     }
   }
 
@@ -387,7 +395,13 @@ export function ChatPage() {
                 {msg.content}
                 {msg.role === "assistant" &&
                   msg.content === "" &&
-                  streaming && <span className="animate-pulse">...</span>}
+                  streaming && (
+                    <span className="animate-pulse">
+                      {queuePosition !== null && queuePosition > 0
+                        ? `Position ${queuePosition} in queue...`
+                        : "..."}
+                    </span>
+                  )}
               </div>
             </div>
           ))}
