@@ -26,6 +26,7 @@ import type {
   RenderJobCreateRequest,
   RenderJobResponse,
 } from "@shared/types/render";
+import type { SkillSummary, SkillDetail } from "@shared/types/skills";
 import type {
   AdminUserResponse,
   UserUpdateRequest,
@@ -277,6 +278,12 @@ export const render = {
   listJobs: () => get<RenderJobResponse[]>("/v1/render/jobs"),
   getJob: (id: string) => get<RenderJobResponse>(`/v1/render/jobs/${id}`),
   cancelJob: (id: string) => del<void>(`/v1/render/jobs/${id}`),
+};
+
+// Skills
+export const skills = {
+  list: () => get<SkillSummary[]>("/v1/skills"),
+  get: (name: string) => get<SkillDetail>(`/v1/skills/${encodeURIComponent(name)}`),
 };
 
 // Admin

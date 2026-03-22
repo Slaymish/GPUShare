@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     TAPO_PASSWORD: str = ""
     TAPO_DEVICE_IP: str = ""
 
+    # ── Skills ────────────────────────────────────────────────────────────
+    SKILLS_DIR: str = "skills"
+
     # ── Cloudflare Tunnel ────────────────────────────────────────────────
     TUNNEL_TOKEN: str = ""
 

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useWebHaptics } from "../lib/haptics";
-import { inference, getHealth } from "../lib/api";
+import { inference, skills as skillsApi, getHealth } from "../lib/api";
 import type { ChatMessage } from "@shared/types/inference";
 import type { ModelInfo } from "@shared/types/inference";
+import type { SkillSummary, SkillDetail } from "@shared/types/skills";
 import {
   Button,
   Textarea,
@@ -13,11 +14,18 @@ import {
   SelectItem,
 } from "../components/ui";
 
+interface ActiveSkill {
+  name: string;
+  description: string;
+  content: string;
+}
+
 interface Chat {
   id: string;
   title: string;
   model: string;
   messages: ChatMessage[];
+  activeSkills: ActiveSkill[];
   createdAt: number;
 }
 
@@ -66,10 +74,15 @@ export function ChatPage() {
   const [streaming, setStreaming] = useState(false);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [billingEnabled, setBillingEnabled] = useState(false);
+  const [skillCatalog, setSkillCatalog] = useState<SkillSummary[]>([]);
+  const [showSkillPicker, setShowSkillPicker] = useState(false);
+  const [skillFilter, setSkillFilter] = useState("");
   const messagesEnd = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null;
   const messages = activeChat?.messages ?? [];
+  const activeSkills = activeChat?.activeSkills ?? [];
 
   useEffect(() => {
     inference
@@ -85,6 +98,7 @@ export function ChatPage() {
         setBillingEnabled(h.integrations.billing && h.integrations.stripe),
       )
       .catch(() => {});
+    skillsApi.list().then(setSkillCatalog).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -119,11 +133,36 @@ export function ChatPage() {
       title: "New Chat",
       model: selectedModel,
       messages: [],
+      activeSkills: [],
       createdAt: Date.now(),
     };
     setChats((prev) => [chat, ...prev]);
     setActiveChatId(chat.id);
     setInput("");
+  }
+
+  async function activateSkill(skillName: string) {
+    if (activeSkills.some((s) => s.name === skillName)) return;
+    try {
+      const detail = await skillsApi.get(skillName);
+      const chatId = activeChatId;
+      if (!chatId) return;
+      updateChat(chatId, (c) => ({
+        ...c,
+        activeSkills: [...(c.activeSkills ?? []), detail],
+      }));
+      trigger("nudge");
+    } catch {
+      // skill load failed — ignore
+    }
+  }
+
+  function removeSkill(skillName: string) {
+    if (!activeChatId) return;
+    updateChat(activeChatId, (c) => ({
+      ...c,
+      activeSkills: (c.activeSkills ?? []).filter((s) => s.name !== skillName),
+    }));
   }
 
   function deleteChat(chatId: string) {
@@ -148,6 +187,7 @@ export function ChatPage() {
         title: "New Chat",
         model: selectedModel,
         messages: [],
+        activeSkills: [],
         createdAt: Date.now(),
       };
       setChats((prev) => [chat, ...prev]);
@@ -157,6 +197,19 @@ export function ChatPage() {
 
     const userMsg: ChatMessage = { role: "user", content: text };
     const updatedMessages = [...messages, userMsg];
+
+    // Build messages to send, prepending system message for active skills
+    const currentSkills = activeSkills;
+    let messagesToSend: ChatMessage[] = updatedMessages;
+    if (currentSkills.length > 0) {
+      const systemContent = currentSkills
+        .map((s) => `## ${s.name}\n\n${s.content}`)
+        .join("\n\n---\n\n");
+      messagesToSend = [
+        { role: "system", content: systemContent },
+        ...updatedMessages,
+      ];
+    }
 
     updateChat(chatId, (c) => ({
       ...c,
@@ -175,7 +228,7 @@ export function ChatPage() {
       let fullContent = "";
       const stream = inference.chatCompletionStream({
         model: selectedModel,
-        messages: updatedMessages,
+        messages: messagesToSend,
         stream: true,
       });
 
@@ -214,9 +267,43 @@ export function ChatPage() {
     }
   }
 
+  function handleInputChange(value: string) {
+    setInput(value);
+    // Show skill picker when input starts with /
+    if (value.startsWith("/") && skillCatalog.length > 0) {
+      setShowSkillPicker(true);
+      setSkillFilter(value.slice(1).toLowerCase());
+    } else {
+      setShowSkillPicker(false);
+    }
+  }
+
+  function handleSkillSelect(skill: SkillSummary) {
+    setShowSkillPicker(false);
+    setInput("");
+    activateSkill(skill.name);
+    inputRef.current?.focus();
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape" && showSkillPicker) {
+      setShowSkillPicker(false);
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      if (showSkillPicker) {
+        // Select the first matching skill
+        const filtered = skillCatalog.filter(
+          (s) =>
+            s.name.toLowerCase().includes(skillFilter) &&
+            !activeSkills.some((a) => a.name === s.name),
+        );
+        if (filtered.length > 0) {
+          handleSkillSelect(filtered[0]);
+          return;
+        }
+      }
       handleSend();
     }
   }
@@ -409,23 +496,86 @@ export function ChatPage() {
         </div>
 
         <div className="border-t border-gray-800 p-4 mb-16 md:mb-0">
-          <div className="flex gap-2 max-w-4xl mx-auto w-full">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              rows={1}
-              className="flex-1 min-w-0 rounded-xl"
-            />
-            <Button
-              onClick={handleSend}
-              disabled={streaming || !input.trim()}
-              className="rounded-xl px-4 md:px-6 whitespace-nowrap"
-              size="lg"
-            >
-              {streaming ? "..." : "Send"}
-            </Button>
+          <div className="max-w-4xl mx-auto w-full space-y-2">
+            {/* Active skills pills */}
+            {activeSkills.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {activeSkills.map((skill) => (
+                  <span
+                    key={skill.name}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-900/50 text-blue-300 text-xs"
+                  >
+                    {skill.name}
+                    <button
+                      onClick={() => removeSkill(skill.name)}
+                      className="hover:text-blue-100 text-blue-400"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Skill picker dropdown */}
+            <div className="relative">
+              {showSkillPicker && (
+                <div className="absolute bottom-full left-0 right-0 mb-1 bg-gray-900 border border-gray-700 rounded-lg shadow-lg max-h-48 overflow-auto z-10">
+                  {skillCatalog
+                    .filter(
+                      (s) =>
+                        s.name.toLowerCase().includes(skillFilter) &&
+                        !activeSkills.some((a) => a.name === s.name),
+                    )
+                    .map((skill) => (
+                      <button
+                        key={skill.name}
+                        onClick={() => handleSkillSelect(skill)}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-800 transition-colors"
+                      >
+                        <div className="text-sm text-white font-medium">
+                          /{skill.name}
+                        </div>
+                        <div className="text-xs text-gray-400 truncate">
+                          {skill.description}
+                        </div>
+                      </button>
+                    ))}
+                  {skillCatalog.filter(
+                    (s) =>
+                      s.name.toLowerCase().includes(skillFilter) &&
+                      !activeSkills.some((a) => a.name === s.name),
+                  ).length === 0 && (
+                    <div className="px-3 py-2 text-xs text-gray-500">
+                      No matching skills
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    skillCatalog.length > 0
+                      ? "Type a message or / for skills..."
+                      : "Type a message..."
+                  }
+                  rows={1}
+                  className="flex-1 min-w-0 rounded-xl"
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={streaming || !input.trim()}
+                  className="rounded-xl px-4 md:px-6 whitespace-nowrap"
+                  size="lg"
+                >
+                  {streaming ? "..." : "Send"}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
