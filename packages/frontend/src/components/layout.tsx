@@ -57,7 +57,13 @@ function useServerStatus(authed: boolean): {
   return { status, health };
 }
 
-function StatusPill({ status, health }: { status: ServerStatus; health: HealthResponse | null }) {
+function StatusPill({
+  status,
+  health,
+}: {
+  status: ServerStatus;
+  health: HealthResponse | null;
+}) {
   const config = statusConfig[status];
   const [hovered, setHovered] = useState(false);
 
@@ -99,9 +105,7 @@ function StatusPill({ status, health }: { status: ServerStatus; health: HealthRe
           )}
           <div className="text-[#6F6B66]">
             <span className="font-medium text-[#2D2B28]">Services: </span>
-            {health.services.length > 0
-              ? health.services.join(", ")
-              : "None"}
+            {health.services.length > 0 ? health.services.join(", ") : "None"}
           </div>
         </div>
       )}
@@ -224,6 +228,9 @@ export function Layout() {
   const [balance, setBalance] = useState<number | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("gpushare_sidebar_collapsed") === "true";
+  });
   const { status, health } = useServerStatus(authed);
   const billingEnabled =
     (health?.integrations?.billing && health?.integrations?.stripe) ?? false;
@@ -273,70 +280,125 @@ export function Layout() {
   return (
     <div className="flex h-screen bg-[#F4F3EE] text-[#2D2B28] overflow-hidden max-w-full">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-white flex-col border-r border-[#E5E1DB] fixed left-0 top-0 bottom-0">
+      <aside
+        className={`hidden md:flex bg-white flex-col border-r border-[#E5E1DB] fixed left-0 top-0 bottom-0 transition-all duration-300 ${desktopSidebarCollapsed ? "w-16" : "w-64"}`}
+      >
         <div className="p-6 border-b border-[#E5E1DB]">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tight">
-              {branding.appName}
-            </h1>
-            <StatusPill status={status} health={health} />
+            {!desktopSidebarCollapsed && (
+              <>
+                <h1 className="text-xl font-bold tracking-tight">
+                  {branding.appName}
+                </h1>
+                <StatusPill status={status} health={health} />
+              </>
+            )}
+            {desktopSidebarCollapsed && (
+              <button
+                onClick={() => {
+                  setDesktopSidebarCollapsed(false);
+                  localStorage.setItem("gpushare_sidebar_collapsed", "false");
+                }}
+                className="text-[#6F6B66] hover:text-[#2D2B28] mx-auto"
+                title="Expand sidebar"
+              >
+                <MenuIcon className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className="flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-              activeProps={{ className: "bg-[#F4F3EE] text-[#2D2B28]" }}
-              inactiveProps={{
-                className:
-                  "text-[#6F6B66] hover:text-[#2D2B28] hover:bg-[#F4F3EE]",
-              }}
-              onMouseDown={() => trigger("nudge")}
-            >
-              {item.label}
-              {item.label === "Account" && billingEnabled && balance !== null && balance < balanceThresholds.low && (
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#C62828] opacity-75 animate-ping" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C62828]" />
-                </span>
-              )}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const Icon = iconMap[item.label];
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${desktopSidebarCollapsed ? "justify-center" : "justify-between"}`}
+                activeProps={{ className: "bg-[#F4F3EE] text-[#2D2B28]" }}
+                inactiveProps={{
+                  className:
+                    "text-[#6F6B66] hover:text-[#2D2B28] hover:bg-[#F4F3EE]",
+                }}
+                onMouseDown={() => trigger("nudge")}
+                title={desktopSidebarCollapsed ? item.label : undefined}
+              >
+                {desktopSidebarCollapsed ? (
+                  <span className="relative">
+                    {Icon && <Icon className="w-5 h-5" />}
+                    {item.label === "Account" &&
+                      billingEnabled &&
+                      balance !== null &&
+                      balance < balanceThresholds.low && (
+                        <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-[#C62828] opacity-75 animate-ping" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C62828]" />
+                        </span>
+                      )}
+                  </span>
+                ) : (
+                  <>
+                    {item.label}
+                    {item.label === "Account" &&
+                      billingEnabled &&
+                      balance !== null &&
+                      balance < balanceThresholds.low && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full rounded-full bg-[#C62828] opacity-75 animate-ping" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C62828]" />
+                        </span>
+                      )}
+                  </>
+                )}
+              </Link>
+            );
+          })}
         </nav>
         <div className="p-4 border-t border-[#E5E1DB] space-y-2">
-          {billingEnabled && balance !== null && (
-            <div className="text-sm">
-              <span className="text-[#6F6B66]">
-                {balance < 0 ? "Debt: " : "Balance: "}
-              </span>
-              <span
-                className={
-                  balance > balanceThresholds.high
-                    ? "text-[#2E7D32]"
-                    : balance > balanceThresholds.medium
-                      ? "text-[#E65100]"
-                      : balance > balanceThresholds.low
-                        ? "text-[#EF6C00]"
-                        : "text-[#C62828]"
-                }
+          {!desktopSidebarCollapsed && (
+            <>
+              {billingEnabled && balance !== null && (
+                <div className="text-sm">
+                  <span className="text-[#6F6B66]">
+                    {balance < 0 ? "Debt: " : "Balance: "}
+                  </span>
+                  <span
+                    className={
+                      balance > balanceThresholds.high
+                        ? "text-[#2E7D32]"
+                        : balance > balanceThresholds.medium
+                          ? "text-[#E65100]"
+                          : balance > balanceThresholds.low
+                            ? "text-[#EF6C00]"
+                            : "text-[#C62828]"
+                    }
+                  >
+                    {fmtUsd(balance)}
+                  </span>
+                </div>
+              )}
+              {email && (
+                <div className="text-xs text-[#B1ADA1] truncate">{email}</div>
+              )}
+              <Button
+                onClick={handleLogout}
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start"
               >
-                {fmtUsd(balance)}
-              </span>
-            </div>
+                Logout
+              </Button>
+              <button
+                onClick={() => {
+                  setDesktopSidebarCollapsed(true);
+                  localStorage.setItem("gpushare_sidebar_collapsed", "true");
+                }}
+                className="text-xs text-[#B1ADA1] hover:text-[#6F6B66] w-full text-left"
+              >
+                Collapse sidebar
+              </button>
+            </>
           )}
-          {email && (
-            <div className="text-xs text-[#B1ADA1] truncate">{email}</div>
-          )}
-          <Button
-            onClick={handleLogout}
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start"
-          >
-            Logout
-          </Button>
         </div>
       </aside>
 
@@ -423,7 +485,9 @@ export function Layout() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto pt-14 md:pt-0 pb-16 md:pb-0 min-w-0 w-full md:ml-64">
+      <main
+        className={`flex-1 overflow-auto pt-14 md:pt-0 pb-16 md:pb-0 min-w-0 w-full transition-all duration-300 ${desktopSidebarCollapsed ? "md:ml-16" : "md:ml-64"}`}
+      >
         <Outlet />
       </main>
 
@@ -447,12 +511,15 @@ export function Layout() {
               >
                 <span className="relative">
                   {Icon && <Icon className="w-5 h-5" />}
-                  {item.label === "Account" && billingEnabled && balance !== null && balance < balanceThresholds.low && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full rounded-full bg-[#C62828] opacity-75 animate-ping" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C62828]" />
-                    </span>
-                  )}
+                  {item.label === "Account" &&
+                    billingEnabled &&
+                    balance !== null &&
+                    balance < balanceThresholds.low && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-[#C62828] opacity-75 animate-ping" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C62828]" />
+                      </span>
+                    )}
                 </span>
                 {item.label}
               </Link>
