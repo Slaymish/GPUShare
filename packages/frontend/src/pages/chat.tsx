@@ -12,6 +12,8 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  Badge,
+  RelativeTime,
 } from "../components/ui";
 
 interface ActiveSkill {
@@ -61,6 +63,19 @@ function deriveTitle(messages: ChatMessage[]): string {
   return text.length < first.content.length ? text + "..." : text;
 }
 
+const QUICK_PROMPTS = [
+  "Explain how transformers work in simple terms",
+  "Write a Python script to resize images in bulk",
+  "Compare PostgreSQL vs SQLite for small projects",
+  "Help me debug a CORS error in my API",
+];
+
+const FOLLOW_UP_SUGGESTIONS = [
+  "Tell me more",
+  "Give me an example",
+  "Summarise that",
+];
+
 export function ChatPage() {
   const { trigger } = useWebHaptics();
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -76,8 +91,15 @@ export function ChatPage() {
   const [skillCatalog, setSkillCatalog] = useState<SkillSummary[]>([]);
   const [showSkillPicker, setShowSkillPicker] = useState(false);
   const [skillFilter, setSkillFilter] = useState("");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [lastElapsedSeconds, setLastElapsedSeconds] = useState<number | null>(null);
+  const [lastTokenCount, setLastTokenCount] = useState<number | null>(null);
+  const [messageReactions, setMessageReactions] = useState<Record<string, "up" | "down">>({});
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const streamStartTime = useRef<number | null>(null);
+  const elapsedInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null;
   const messages = activeChat?.messages ?? [];
@@ -116,6 +138,36 @@ export function ChatPage() {
     if (activeChat && activeChat.model) setSelectedModel(activeChat.model);
   }, [activeChatId]);
 
+  // Elapsed time timer during streaming
+  useEffect(() => {
+    if (streaming) {
+      streamStartTime.current = Date.now();
+      setElapsedSeconds(0);
+      setLastElapsedSeconds(null);
+      setLastTokenCount(null);
+      elapsedInterval.current = setInterval(() => {
+        if (streamStartTime.current) {
+          setElapsedSeconds(Math.floor((Date.now() - streamStartTime.current) / 1000));
+        }
+      }, 1000);
+    } else {
+      if (elapsedInterval.current) {
+        clearInterval(elapsedInterval.current);
+        elapsedInterval.current = null;
+      }
+      if (streamStartTime.current) {
+        setLastElapsedSeconds(Math.floor((Date.now() - streamStartTime.current) / 1000));
+        streamStartTime.current = null;
+      }
+    }
+    return () => {
+      if (elapsedInterval.current) {
+        clearInterval(elapsedInterval.current);
+        elapsedInterval.current = null;
+      }
+    };
+  }, [streaming]);
+
   const updateChat = useCallback(
     (chatId: string, updater: (chat: Chat) => Chat) => {
       setChats((prev) => prev.map((c) => (c.id === chatId ? updater(c) : c)));
@@ -136,6 +188,8 @@ export function ChatPage() {
     setChats((prev) => [chat, ...prev]);
     setActiveChatId(chat.id);
     setInput("");
+    setLastElapsedSeconds(null);
+    setLastTokenCount(null);
   }
 
   async function activateSkill(skillName: string) {
@@ -171,8 +225,8 @@ export function ChatPage() {
     }
   }
 
-  async function handleSend() {
-    const text = input.trim();
+  async function handleSend(overrideText?: string) {
+    const text = (overrideText ?? input).trim();
     if (!text || !selectedModel || streaming) return;
     trigger("nudge");
 
@@ -218,9 +272,12 @@ export function ChatPage() {
 
     setInput("");
     setStreaming(true);
+    setLastElapsedSeconds(null);
+    setLastTokenCount(null);
 
     try {
       let fullContent = "";
+      let tokenCount = 0;
       const stream = inference.chatCompletionStream({
         model: selectedModel,
         messages: messagesToSend,
@@ -237,13 +294,21 @@ export function ChatPage() {
         const delta = chunk.choices[0]?.delta?.content;
         if (delta) {
           fullContent += delta;
+          tokenCount += 1;
           const content = fullContent;
           updateChat(chatId!, (c) => ({
             ...c,
             messages: [...updatedMessages, { role: "assistant", content }],
           }));
         }
+
+        // Capture usage from the final chunk if available
+        if ((chunk as any).usage?.completion_tokens) {
+          tokenCount = (chunk as any).usage.completion_tokens;
+        }
       }
+
+      setLastTokenCount(tokenCount > 0 ? tokenCount : null);
       trigger("success");
     } catch (err) {
       trigger("error");
@@ -260,6 +325,46 @@ export function ChatPage() {
       setStreaming(false);
       setQueuePosition(null);
     }
+  }
+
+  function handleRegenerate() {
+    if (streaming) return;
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUserMsg || !activeChatId) return;
+
+    // Remove the last assistant message
+    updateChat(activeChatId, (c) => {
+      const msgs = [...c.messages];
+      if (msgs.length > 0 && msgs[msgs.length - 1].role === "assistant") {
+        msgs.pop();
+      }
+      if (msgs.length > 0 && msgs[msgs.length - 1].role === "user") {
+        msgs.pop();
+      }
+      return { ...c, messages: msgs };
+    });
+
+    // Re-send the last user message
+    setTimeout(() => {
+      handleSend(lastUserMsg.content);
+    }, 50);
+  }
+
+  function handleCopy(content: string, index: number) {
+    navigator.clipboard.writeText(content);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  }
+
+  function toggleReaction(msgKey: string, reaction: "up" | "down") {
+    setMessageReactions((prev) => {
+      if (prev[msgKey] === reaction) {
+        const next = { ...prev };
+        delete next[msgKey];
+        return next;
+      }
+      return { ...prev, [msgKey]: reaction };
+    });
   }
 
   function handleInputChange(value: string) {
@@ -301,7 +406,52 @@ export function ChatPage() {
     }
   }
 
+  function handleQuickPrompt(prompt: string) {
+    setInput(prompt);
+    // Auto-send on next tick so state is updated
+    setTimeout(() => {
+      handleSend(prompt);
+    }, 0);
+  }
+
   const [chatListOpen, setChatListOpen] = useState(false);
+
+  // Determine if we should show follow-up suggestions
+  const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+  const showFollowUps =
+    !streaming &&
+    !input.trim() &&
+    lastMsg?.role === "assistant" &&
+    lastMsg.content !== "";
+
+  // Model badge helpers
+  function getModelBadge(m: ModelInfo) {
+    if (m.owned_by === "local") {
+      return (
+        <Badge className="bg-[#E8F5E9] text-[#2E7D32] text-[10px] leading-tight px-1.5 py-0.5">
+          Local GPU
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-[#EDE7F6] text-[#5E35B1] text-[10px] leading-tight px-1.5 py-0.5">
+        Cloud
+      </Badge>
+    );
+  }
+
+  function getColdStartBadge(m: ModelInfo) {
+    if (m.owned_by === "local" && !m.loaded) {
+      return (
+        <Badge className="bg-[#FFF3E0] text-[#E65100] text-[10px] leading-tight px-1.5 py-0.5">
+          Cold start
+        </Badge>
+      );
+    }
+    return null;
+  }
+
+  const currentModel = models.find((m) => m.id === selectedModel);
 
   return (
     <div className="flex h-full">
@@ -323,7 +473,13 @@ export function ChatPage() {
                   : "text-[#6F6B66] hover:bg-[#F4F3EE] hover:text-[#2D2B28]"
               }`}
             >
-              <span className="flex-1 truncate">{chat.title}</span>
+              <div className="flex-1 min-w-0">
+                <span className="block truncate">{chat.title}</span>
+                <RelativeTime
+                  date={new Date(chat.createdAt)}
+                  className="block text-[10px] text-[#B1ADA1] leading-tight mt-0.5"
+                />
+              </div>
               {chat.model && (
                 <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[#EDEAE3] text-[#8A8580] text-[10px] leading-tight">
                   {shortModelName(chat.model)}
@@ -391,7 +547,13 @@ export function ChatPage() {
                       : "text-[#6F6B66] hover:bg-[#F4F3EE] hover:text-[#2D2B28]"
                   }`}
                 >
-                  <span className="flex-1 truncate">{chat.title}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="block truncate">{chat.title}</span>
+                    <RelativeTime
+                      date={new Date(chat.createdAt)}
+                      className="block text-[10px] text-[#B1ADA1] leading-tight mt-0.5"
+                    />
+                  </div>
                   {chat.model && (
                     <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[#EDEAE3] text-[#8A8580] text-[10px] leading-tight">
                       {shortModelName(chat.model)}
@@ -423,12 +585,24 @@ export function ChatPage() {
           </h2>
           <Select value={selectedModel} onValueChange={setSelectedModel}>
             <SelectTrigger className="max-w-full">
-              <SelectValue />
+              <div className="flex items-center gap-2">
+                <SelectValue />
+                {currentModel && (
+                  <span className="flex items-center gap-1">
+                    {getModelBadge(currentModel)}
+                    {getColdStartBadge(currentModel)}
+                  </span>
+                )}
+              </div>
             </SelectTrigger>
             <SelectContent>
               {models.map((m) => (
                 <SelectItem key={m.id} value={m.id}>
-                  {m.id} ({m.owned_by === "local" ? (m.loaded ? "Loaded" : "Local") : "Cloud"})
+                  <span className="flex items-center gap-2">
+                    {m.id}
+                    {getModelBadge(m)}
+                    {getColdStartBadge(m)}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -460,36 +634,137 @@ export function ChatPage() {
         </div>
 
         <div className="flex-1 overflow-auto p-4 space-y-4 min-w-0 bg-[#F4F3EE]">
+          {/* Empty state with quick-start chips */}
           {messages.length === 0 && (
-            <div className="flex items-center justify-center h-full text-[#B1ADA1]">
-              Start a conversation
-            </div>
-          )}
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-2xl w-fit rounded-xl px-4 py-3 text-sm whitespace-pre-wrap break-words ${msg.role === "user" ? "max-w-[85%]" : "max-w-[85%]"} ${
-                  msg.role === "user"
-                    ? "bg-[#C15F3C] text-white"
-                    : "bg-white text-[#2D2B28] border border-[#E5E1DB]"
-                }`}
-              >
-                {msg.content}
-                {msg.role === "assistant" &&
-                  msg.content === "" &&
-                  streaming && (
-                    <span className="animate-pulse text-[#B1ADA1]">
-                      {queuePosition !== null && queuePosition > 0
-                        ? `Position ${queuePosition} in queue...`
-                        : "..."}
-                    </span>
-                  )}
+            <div className="flex flex-col items-center justify-center h-full gap-6">
+              <h3 className="text-xl font-semibold text-[#2D2B28]">
+                What can I help you with?
+              </h3>
+              <div className="flex flex-wrap justify-center gap-2 max-w-lg">
+                {QUICK_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    onClick={() => handleQuickPrompt(prompt)}
+                    className="px-3 py-2 rounded-full border border-[#E5E1DB] bg-white text-sm text-[#6F6B66] hover:bg-[#EDEAE3] hover:text-[#2D2B28] transition-colors"
+                  >
+                    {prompt}
+                  </button>
+                ))}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* Messages */}
+          {messages.map((msg, i) => {
+            const isLastAssistant =
+              msg.role === "assistant" && i === messages.length - 1;
+            const msgReactionKey = `${activeChatId}-${i}`;
+
+            return (
+              <div key={i}>
+                <div
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`group relative max-w-2xl w-fit rounded-xl px-4 py-3 text-sm whitespace-pre-wrap break-words ${msg.role === "user" ? "max-w-[85%]" : "max-w-[85%]"} ${
+                      msg.role === "user"
+                        ? "bg-[#C15F3C] text-white"
+                        : "bg-white text-[#2D2B28] border border-[#E5E1DB]"
+                    }`}
+                  >
+                    {msg.content}
+                    {msg.role === "assistant" &&
+                      msg.content === "" &&
+                      streaming && (
+                        <span className="animate-pulse text-[#B1ADA1]">
+                          {queuePosition !== null && queuePosition > 0
+                            ? `Position ${queuePosition} in queue...`
+                            : `Generating\u2026 ${elapsedSeconds}s`}
+                        </span>
+                      )}
+
+                    {/* Per-message action bar for assistant messages */}
+                    {msg.role === "assistant" && msg.content !== "" && (
+                      <div className="absolute -bottom-8 left-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button
+                          onClick={() => handleCopy(msg.content, i)}
+                          className="px-1.5 py-1 rounded text-xs bg-white border border-[#E5E1DB] text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1] transition-colors"
+                          title="Copy"
+                        >
+                          {copiedIndex === i ? "Copied" : "Copy"}
+                        </button>
+                        <button
+                          onClick={() => toggleReaction(msgReactionKey, "up")}
+                          className={`px-1.5 py-1 rounded text-xs border transition-colors ${
+                            messageReactions[msgReactionKey] === "up"
+                              ? "bg-[#E8F5E9] border-[#2E7D32] text-[#2E7D32]"
+                              : "bg-white border-[#E5E1DB] text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1]"
+                          }`}
+                          title="Thumbs up"
+                        >
+                          &#x1F44D;
+                        </button>
+                        <button
+                          onClick={() => toggleReaction(msgReactionKey, "down")}
+                          className={`px-1.5 py-1 rounded text-xs border transition-colors ${
+                            messageReactions[msgReactionKey] === "down"
+                              ? "bg-[#FFEBEE] border-[#C62828] text-[#C62828]"
+                              : "bg-white border-[#E5E1DB] text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1]"
+                          }`}
+                          title="Thumbs down"
+                        >
+                          &#x1F44E;
+                        </button>
+                        {isLastAssistant && (
+                          <button
+                            onClick={handleRegenerate}
+                            className="px-1.5 py-1 rounded text-xs bg-white border border-[#E5E1DB] text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1] transition-colors"
+                            title="Regenerate"
+                          >
+                            Regenerate
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Generated in Xs indicator after last assistant message */}
+                {isLastAssistant && !streaming && lastElapsedSeconds !== null && msg.content !== "" && (
+                  <div className="flex justify-start mt-1">
+                    <span className="text-[10px] text-[#B1ADA1]">
+                      Generated in {lastElapsedSeconds}s
+                      {lastTokenCount !== null && ` \u00B7 ${lastTokenCount} tokens`}
+                    </span>
+                  </div>
+                )}
+
+                {/* Streaming elapsed indicator */}
+                {isLastAssistant && streaming && msg.content !== "" && (
+                  <div className="flex justify-start mt-1">
+                    <span className="text-[10px] text-[#B1ADA1] animate-pulse">
+                      Generating\u2026 {elapsedSeconds}s
+                    </span>
+                  </div>
+                )}
+
+                {/* Follow-up suggestion chips after last assistant message */}
+                {isLastAssistant && showFollowUps && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {FOLLOW_UP_SUGGESTIONS.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => handleSend(suggestion)}
+                        className="px-3 py-1.5 rounded-full border border-[#E5E1DB] bg-white text-xs text-[#6F6B66] hover:bg-[#EDEAE3] hover:text-[#2D2B28] transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
           <div ref={messagesEnd} />
         </div>
 
@@ -565,12 +840,12 @@ export function ChatPage() {
                   className="flex-1 min-w-0 rounded-xl"
                 />
                 <Button
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={streaming || !input.trim()}
                   className="rounded-xl px-4 md:px-6 whitespace-nowrap"
                   size="lg"
                 >
-                  {streaming ? "..." : "Send"}
+                  {streaming ? `${elapsedSeconds}s` : "Send"}
                 </Button>
               </div>
             </div>

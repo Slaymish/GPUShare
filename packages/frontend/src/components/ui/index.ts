@@ -4,3 +4,6 @@ export * from './textarea';
 export * from './select';
 export * from './dialog';
 export * from './dropdown-menu';
+export * from './badge';
+export * from './stat-card';
+export * from './relative-time';
