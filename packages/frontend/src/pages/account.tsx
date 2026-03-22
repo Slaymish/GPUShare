@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useWebHaptics } from "../lib/haptics";
 import { auth as authApi, billing, getHealth } from "../lib/api";
 import type { HealthResponse } from "../lib/api";
@@ -8,7 +8,7 @@ import type {
   UsageLogResponse,
   InvoiceResponse,
 } from "@shared/types/billing";
-import { Button, Input } from "../components/ui";
+import { Button, Input, StatCard, RelativeTime } from "../components/ui";
 import { PaymentMethodSetup } from "../components/PaymentMethodSetup";
 import { fmtUsd } from "../lib/format";
 
@@ -101,9 +101,21 @@ export function AccountPage() {
   const [setupClientSecret, setSetupClientSecret] = useState<string | null>(
     null,
   );
+  const [dismissed, setDismissed] = useState(false);
+  const [guideTab, setGuideTab] = useState<'curl' | 'python' | 'claude-code' | 'openclaw'>('curl');
 
   const billingEnabled =
     (health?.integrations?.billing && health?.integrations?.stripe) ?? false;
+
+  // Compute usage statistics from loaded usage data
+  const usageStats = useMemo(() => {
+    const inferenceCount = usage.length;
+    const totalKwh = usage.reduce((sum, u) => sum + u.kwh, 0);
+    const inferenceCost = usage.reduce((sum, u) => sum + u.cost_nzd, 0);
+    const totalUsed = balance?.total_used_nzd ?? 0;
+    const renderCost = Math.max(0, totalUsed - inferenceCost);
+    return { inferenceCount, totalKwh, inferenceCost, renderCost, totalUsed };
+  }, [usage, balance]);
 
   function fetchAll() {
     Promise.all([
@@ -227,13 +239,100 @@ export function AccountPage() {
 
   if (loading) return <AccountSkeleton />;
 
+  const curlSnippet = `curl ${API_URL}/v1/inference/chat/completions \\
+  -H "Authorization: Bearer ${revealedKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"model": "llama3", "messages": [{"role": "user", "content": "Hello"}]}'`;
+
+  const pythonSnippet = `from openai import OpenAI
+client = OpenAI(base_url="${API_URL}/v1/inference", api_key="${revealedKey}")
+response = client.chat.completions.create(
+    model="llama3",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+print(response.choices[0].message.content)`;
+
+  const claudeCodeSnippet = `# Add to your shell profile (~/.zshrc or ~/.bashrc)
+export ANTHROPIC_BASE_URL="${API_URL}/v1"
+export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
+
+# Then restart Claude Code`;
+
+  const openClawConfig = JSON.stringify(
+    {
+      models: {
+        providers: {
+          gpushare: {
+            baseUrl: `${API_URL}/v1`,
+            apiKey: revealedKey,
+            api: "openai-completions",
+            models: [
+              {
+                id: "gpt-4",
+                name: "GPUShare GPT-4",
+                reasoning: false,
+                input: ["text"],
+                cost: {
+                  input: 0,
+                  output: 0,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                },
+                contextWindow: 128000,
+                maxTokens: 4096,
+              },
+            ],
+          },
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  // Donut chart percentages
+  const totalCostForDonut = usageStats.inferenceCost + usageStats.renderCost;
+  const inferencePct = totalCostForDonut > 0 ? (usageStats.inferenceCost / totalCostForDonut) * 100 : 100;
+  const renderPct = totalCostForDonut > 0 ? (usageStats.renderCost / totalCostForDonut) * 100 : 0;
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-5xl pb-20 md:pb-0 w-full">
+      {/* Low-balance sticky warning banner */}
+      {billingEnabled &&
+        balance &&
+        balance.balance_nzd < 5 &&
+        balance.balance_nzd > 0 &&
+        !dismissed && (
+          <div className="bg-[#FFF3E0] border border-[#FFE0B2] text-[#E65100] rounded-lg px-4 py-3 flex items-center justify-between text-sm">
+            <span>
+              Low balance: {fmtUsd(balance.balance_nzd)} NZD remaining{" "}
+              <button
+                onClick={() => {
+                  const topUpSection = document.getElementById("balance-card");
+                  topUpSection?.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="underline font-medium hover:text-[#BF360C]"
+              >
+                Top up
+              </button>
+            </span>
+            <button
+              onClick={() => setDismissed(true)}
+              className="ml-4 text-[#E65100] hover:text-[#BF360C] font-medium"
+            >
+              x
+            </button>
+          </div>
+        )}
+
       <h2 className="text-lg font-semibold">Account</h2>
 
       {/* Balance Card */}
       {billingEnabled && balance && (
-        <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
+        <div
+          id="balance-card"
+          className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]"
+        >
           <div className="text-sm text-[#6F6B66] mb-1">
             {balance.billing_type === "postpaid" && balance.balance_nzd < 0
               ? "Current Debt"
@@ -265,6 +364,26 @@ export function AccountPage() {
                 {balance.billing_type}
               </span>
             </span>
+          </div>
+
+          {/* Credit balance breakdown */}
+          <div className="mt-2 text-sm text-[#6F6B66] flex flex-wrap gap-x-4 gap-y-1">
+            {balance.total_topped_up_nzd !== undefined && (
+              <span>
+                Total topped up:{" "}
+                <span className="text-[#2E7D32]">
+                  {fmtUsd(balance.total_topped_up_nzd)}
+                </span>
+              </span>
+            )}
+            {balance.total_used_nzd !== undefined && (
+              <span>
+                Total used:{" "}
+                <span className="text-[#C62828]">
+                  {fmtUsd(balance.total_used_nzd)}
+                </span>
+              </span>
+            )}
           </div>
 
           {balance.billing_type === "prepaid" && (
@@ -481,114 +600,149 @@ export function AccountPage() {
               Copy to clipboard
             </Button>
 
-            {/* Integration Panels */}
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Claude Code Integration */}
-              <div className="bg-white border border-[#E5E1DB] rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <img
-                    src="/claude-logo.svg"
-                    alt="Claude"
-                    className="w-5 h-5"
-                  />
-                  <span className="text-sm font-medium">Claude Code</span>
-                </div>
-                <p className="text-xs text-[#6F6B66] mb-2">
-                  Configure Claude Code to use GPUShare as LLM gateway
-                </p>
-                <div className="space-y-2">
-                  <Button
-                    onClick={() => {
-                      const envConfig = `# Add to your shell profile (~/.zshrc or ~/.bashrc)
-export ANTHROPIC_BASE_URL="${API_URL}/v1"
-export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
-
-# Then restart Claude Code`;
-                      navigator.clipboard.writeText(envConfig);
-                      trigger("nudge");
-                    }}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs"
+            {/* Integration Guide Tabs */}
+            <div className="mt-4">
+              <div className="flex border-b border-[#C8E6C9]">
+                {(
+                  [
+                    { key: "curl", label: "curl" },
+                    { key: "python", label: "Python" },
+                    { key: "claude-code", label: "Claude Code" },
+                    { key: "openclaw", label: "OpenClaw" },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setGuideTab(tab.key)}
+                    className={`px-3 py-2 text-xs font-medium transition-colors ${
+                      guideTab === tab.key
+                        ? "text-[#C15F3C] border-b-2 border-[#C15F3C]"
+                        : "text-[#6F6B66] hover:text-[#2D2B28]"
+                    }`}
                   >
-                    Copy Environment Setup
-                  </Button>
-                  <a
-                    href="https://code.claude.com/docs/en/llm-gateway"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-center text-xs text-[#C15F3C] hover:text-[#A84E30]"
-                  >
-                    View Setup Guide →
-                  </a>
-                </div>
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
-              {/* OpenClaw Integration */}
-              <div className="bg-white border border-[#E5E1DB] rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <img
-                    src="/openclaw-dark.svg"
-                    alt="OpenClaw"
-                    className="w-5 h-5"
-                  />
-                  <span className="text-sm font-medium">OpenClaw</span>
-                </div>
-                <p className="text-xs text-[#6F6B66] mb-2">
-                  Add GPUShare as custom provider
-                </p>
-                <div className="space-y-2">
-                  <Button
-                    onClick={() => {
-                      const config = JSON.stringify(
-                        {
-                          models: {
-                            providers: {
-                              gpushare: {
-                                baseUrl: `${API_URL}/v1`,
-                                apiKey: revealedKey,
-                                api: "openai-completions",
-                                models: [
-                                  {
-                                    id: "gpt-4",
-                                    name: "GPUShare GPT-4",
-                                    reasoning: false,
-                                    input: ["text"],
-                                    cost: {
-                                      input: 0,
-                                      output: 0,
-                                      cacheRead: 0,
-                                      cacheWrite: 0,
-                                    },
-                                    contextWindow: 128000,
-                                    maxTokens: 4096,
-                                  },
-                                ],
-                              },
-                            },
-                          },
-                        },
-                        null,
-                        2,
-                      );
-                      navigator.clipboard.writeText(config);
-                      trigger("nudge");
-                    }}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs"
-                  >
-                    Copy models.json Config
-                  </Button>
-                  <a
-                    href="https://docs.openclaw.ai/concepts/model-providers"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block text-center text-xs text-[#C15F3C] hover:text-[#A84E30]"
-                  >
-                    View Setup Guide →
-                  </a>
-                </div>
+              <div className="mt-3">
+                {guideTab === "curl" && (
+                  <div>
+                    <pre className="bg-white border border-[#E5E1DB] rounded-lg p-3 text-xs text-[#2D2B28] overflow-x-auto whitespace-pre-wrap">
+                      {curlSnippet}
+                    </pre>
+                    <Button
+                      onClick={() => {
+                        navigator.clipboard.writeText(curlSnippet);
+                        trigger("nudge");
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 text-xs text-[#2E7D32] hover:text-[#1B5E20]"
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                )}
+
+                {guideTab === "python" && (
+                  <div>
+                    <pre className="bg-white border border-[#E5E1DB] rounded-lg p-3 text-xs text-[#2D2B28] overflow-x-auto whitespace-pre-wrap">
+                      {pythonSnippet}
+                    </pre>
+                    <Button
+                      onClick={() => {
+                        navigator.clipboard.writeText(pythonSnippet);
+                        trigger("nudge");
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 text-xs text-[#2E7D32] hover:text-[#1B5E20]"
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                )}
+
+                {guideTab === "claude-code" && (
+                  <div className="bg-white border border-[#E5E1DB] rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <img
+                        src="/claude-logo.svg"
+                        alt="Claude"
+                        className="w-5 h-5"
+                      />
+                      <span className="text-sm font-medium">Claude Code</span>
+                    </div>
+                    <p className="text-xs text-[#6F6B66] mb-2">
+                      Configure Claude Code to use GPUShare as LLM gateway
+                    </p>
+                    <div className="space-y-2">
+                      <pre className="bg-[#F4F3EE] border border-[#E5E1DB] rounded-lg p-3 text-xs text-[#2D2B28] overflow-x-auto whitespace-pre-wrap">
+                        {claudeCodeSnippet}
+                      </pre>
+                      <Button
+                        onClick={() => {
+                          navigator.clipboard.writeText(claudeCodeSnippet);
+                          trigger("nudge");
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-xs"
+                      >
+                        Copy Environment Setup
+                      </Button>
+                      <a
+                        href="https://code.claude.com/docs/en/llm-gateway"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-center text-xs text-[#C15F3C] hover:text-[#A84E30]"
+                      >
+                        View Setup Guide
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {guideTab === "openclaw" && (
+                  <div className="bg-white border border-[#E5E1DB] rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <img
+                        src="/openclaw-dark.svg"
+                        alt="OpenClaw"
+                        className="w-5 h-5"
+                      />
+                      <span className="text-sm font-medium">OpenClaw</span>
+                    </div>
+                    <p className="text-xs text-[#6F6B66] mb-2">
+                      Add GPUShare as custom provider
+                    </p>
+                    <div className="space-y-2">
+                      <pre className="bg-[#F4F3EE] border border-[#E5E1DB] rounded-lg p-3 text-xs text-[#2D2B28] overflow-x-auto whitespace-pre-wrap">
+                        {openClawConfig}
+                      </pre>
+                      <Button
+                        onClick={() => {
+                          navigator.clipboard.writeText(openClawConfig);
+                          trigger("nudge");
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-xs"
+                      >
+                        Copy models.json Config
+                      </Button>
+                      <a
+                        href="https://docs.openclaw.ai/concepts/model-providers"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-center text-xs text-[#C15F3C] hover:text-[#A84E30]"
+                      >
+                        View Setup Guide
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -628,12 +782,14 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                   <tr key={k.id} className="border-b border-[#EDEBE6]">
                     <td className="py-2">{k.label || "-"}</td>
                     <td className="py-2 text-[#6F6B66]">
-                      {new Date(k.created_at).toLocaleDateString()}
+                      <RelativeTime date={k.created_at} />
                     </td>
                     <td className="py-2 text-[#6F6B66]">
-                      {k.last_used
-                        ? new Date(k.last_used).toLocaleDateString()
-                        : "Never"}
+                      {k.last_used ? (
+                        <RelativeTime date={k.last_used} />
+                      ) : (
+                        "Never"
+                      )}
                     </td>
                     <td className="py-2">
                       {k.revoked_at ? (
@@ -661,6 +817,59 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
           </div>
         ) : (
           <p className="text-sm text-[#B1ADA1]">No API keys</p>
+        )}
+      </div>
+
+      {/* Usage Statistics */}
+      <div className="space-y-4">
+        <h3 className="font-medium">Usage Statistics</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <StatCard
+            label="Inference Requests"
+            value={usageStats.inferenceCount.toLocaleString()}
+            subLabel="From loaded usage logs"
+          />
+          <StatCard
+            label="Render Jobs"
+            value={usageStats.renderCost > 0 ? Math.ceil(usageStats.renderCost / 0.01).toString() : "\u2014"}
+            subLabel="Estimated from cost data"
+          />
+          <StatCard
+            label="Total kWh"
+            value={usageStats.totalKwh.toFixed(4)}
+            subLabel="Energy consumed"
+          />
+        </div>
+
+        {/* Donut chart: inference vs render cost split */}
+        {totalCostForDonut > 0 && (
+          <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
+            <h4 className="text-sm font-medium mb-4">Cost Breakdown</h4>
+            <div className="flex items-center gap-6">
+              <div
+                className="w-24 h-24 rounded-full flex-shrink-0 flex items-center justify-center"
+                style={{
+                  background: `conic-gradient(#C15F3C ${inferencePct}%, #5E35B1 ${inferencePct}% 100%)`,
+                }}
+              >
+                <div className="w-14 h-14 rounded-full bg-white" />
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#C15F3C]" />
+                  <span className="text-[#6F6B66]">Inference</span>
+                  <span className="font-medium">{fmtUsd(usageStats.inferenceCost)}</span>
+                  <span className="text-[#B1ADA1]">({inferencePct.toFixed(1)}%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#5E35B1]" />
+                  <span className="text-[#6F6B66]">Render</span>
+                  <span className="font-medium">{fmtUsd(usageStats.renderCost)}</span>
+                  <span className="text-[#B1ADA1]">({renderPct.toFixed(1)}%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
@@ -712,7 +921,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                 variant="ghost"
                 size="sm"
               >
-                ← Previous
+                Previous
               </Button>
               <span className="text-[#B1ADA1]">
                 Showing {usageOffset + 1}-{usageOffset + usage.length}
@@ -723,7 +932,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                 variant="ghost"
                 size="sm"
               >
-                Next →
+                Next
               </Button>
             </div>
           </>

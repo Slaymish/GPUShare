@@ -2,6 +2,7 @@ import type { UserResponse } from './auth';
 
 export interface AdminUserResponse extends UserResponse {
   balance_nzd: number;
+  monthly_usage_nzd: number;
 }
 
 export interface UserUpdateRequest {

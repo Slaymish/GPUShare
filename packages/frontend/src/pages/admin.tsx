@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWebHaptics } from "../lib/haptics";
 import { admin, getHealth } from "../lib/api";
 import type { HealthResponse, PowerData } from "../lib/api";
 import { parseToken } from "../lib/auth";
-import { Button, Input } from "../components/ui";
+import { Button, Input, Badge, StatCard } from "../components/ui";
 import { fmtUsd } from "../lib/format";
+import { useNavigate } from "@tanstack/react-router";
 import type {
   AdminUserResponse,
   UserUpdateRequest,
@@ -97,6 +98,7 @@ export function AdminPage() {
   const [invites, setInvites] = useState<InviteListResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const currentUserId = parseToken()?.sub ?? "";
 
   function fetchData() {
@@ -123,6 +125,18 @@ export function AdminPage() {
     fetchData();
   }, []);
 
+  // Global keyboard listener for command palette
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   if (loading) return <AdminSkeleton />;
 
   const integrations = getIntegrations(health);
@@ -130,6 +144,13 @@ export function AdminPage() {
   return (
     <div className="p-6 space-y-8 max-w-6xl pb-20 md:pb-12">
       <h2 className="text-lg font-semibold">Admin Dashboard</h2>
+
+      {/* Setup Checklist */}
+      <SetupChecklist
+        integrations={integrations}
+        health={health}
+        userCount={users.length}
+      />
 
       {/* Stats */}
       {stats && (
@@ -200,6 +221,7 @@ export function AdminPage() {
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Role</th>
                 <th className="px-4 py-3 font-medium">Balance</th>
+                <th className="px-4 py-3 font-medium">Usage</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
@@ -220,9 +242,233 @@ export function AdminPage() {
           </table>
         </div>
       </div>
+
+      {/* Command Palette */}
+      {commandPaletteOpen && (
+        <CommandPalette
+          users={users}
+          onClose={() => setCommandPaletteOpen(false)}
+        />
+      )}
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Setup Checklist                                                    */
+/* ------------------------------------------------------------------ */
+
+function SetupChecklist({
+  integrations,
+  health,
+  userCount,
+}: {
+  integrations: Integration[];
+  health: HealthResponse | null;
+  userCount: number;
+}) {
+  const [dismissed, setDismissed] = useState(() => {
+    return localStorage.getItem("gpushare_admin_checklist_dismissed") === "true";
+  });
+  const [collapsed, setCollapsed] = useState(false);
+
+  const billingConfigured =
+    integrations.find((i) => i.key === "billing")?.configured ?? false;
+  const stripeConfigured =
+    integrations.find((i) => i.key === "stripe")?.configured ?? false;
+  const r2Configured =
+    integrations.find((i) => i.key === "r2")?.configured ?? false;
+  const hasInvitedUser = userCount > 1;
+
+  const items = [
+    { label: "Set electricity rate", checked: billingConfigured },
+    { label: "Configure Cloudflare Tunnel", checked: true },
+    { label: "Set up Stripe", checked: stripeConfigured },
+    { label: "Configure R2", checked: r2Configured },
+    { label: "Invite first user", checked: hasInvitedUser },
+  ];
+
+  const allDone = items.every((item) => item.checked);
+  const anyNotConfigured = integrations.some((i) => !i.configured);
+
+  // Don't show if dismissed or if everything is configured
+  if (dismissed || (!anyNotConfigured && allDone)) return null;
+
+  function handleDismiss() {
+    localStorage.setItem("gpushare_admin_checklist_dismissed", "true");
+    setDismissed(true);
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-[#E5E1DB] overflow-hidden">
+      <div
+        className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-[#F4F3EE]"
+        onClick={() => setCollapsed((c) => !c)}
+      >
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold">Setup Checklist</h3>
+          <span className="text-xs text-[#B1ADA1]">
+            {items.filter((i) => i.checked).length}/{items.length} complete
+          </span>
+        </div>
+        <span className="text-[#B1ADA1] text-xs">
+          {collapsed ? "Show" : "Hide"}
+        </span>
+      </div>
+      {!collapsed && (
+        <div className="px-5 pb-4 space-y-2">
+          {items.map((item) => (
+            <div key={item.label} className="flex items-center gap-3 text-sm">
+              <span
+                className={`flex-shrink-0 w-5 h-5 rounded flex items-center justify-center text-xs ${
+                  item.checked
+                    ? "bg-[#E8F5E9] text-[#2E7D32]"
+                    : "bg-[#EDEAE3] text-[#B1ADA1]"
+                }`}
+              >
+                {item.checked ? "\u2713" : "\u25A1"}
+              </span>
+              <span
+                className={
+                  item.checked ? "text-[#6F6B66] line-through" : "text-[#2C2925]"
+                }
+              >
+                {item.label}
+              </span>
+            </div>
+          ))}
+          <div className="pt-2">
+            <Button
+              onClick={handleDismiss}
+              variant="ghost"
+              size="sm"
+              className="text-xs text-[#B1ADA1] hover:text-[#6F6B66]"
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Command Palette                                                    */
+/* ------------------------------------------------------------------ */
+
+function CommandPalette({
+  users,
+  onClose,
+}: {
+  users: AdminUserResponse[];
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const navigate = useNavigate();
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    },
+    [onClose],
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  const pages = [
+    { label: "Go to Chat", path: "/chat" },
+    { label: "Go to Render", path: "/render" },
+    { label: "Go to Account", path: "/account" },
+    { label: "Go to Admin", path: "/admin" },
+  ];
+
+  const lowerQuery = query.toLowerCase();
+
+  const filteredPages = query
+    ? pages.filter((p) => p.label.toLowerCase().includes(lowerQuery))
+    : pages;
+
+  const filteredUsers = query
+    ? users.filter((u) => u.email.toLowerCase().includes(lowerQuery))
+    : [];
+
+  function handleNavigate(path: string) {
+    onClose();
+    navigate({ to: path });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-black/30"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-[#E5E1DB]">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search pages, users..."
+            className="w-full text-sm bg-transparent outline-none placeholder:text-[#B1ADA1]"
+            autoFocus
+          />
+        </div>
+        <div className="max-h-72 overflow-y-auto">
+          {filteredPages.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-[#B1ADA1] uppercase tracking-wider">
+                Pages
+              </div>
+              {filteredPages.map((page) => (
+                <button
+                  key={page.path}
+                  onClick={() => handleNavigate(page.path)}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#F4F3EE] transition-colors"
+                >
+                  {page.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {filteredUsers.length > 0 && (
+            <div>
+              <div className="px-4 py-2 text-[10px] font-semibold text-[#B1ADA1] uppercase tracking-wider">
+                Users
+              </div>
+              {filteredUsers.map((user) => (
+                <button
+                  key={user.id}
+                  onClick={() => handleNavigate(`/admin`)}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#F4F3EE] transition-colors"
+                >
+                  {user.email}
+                </button>
+              ))}
+            </div>
+          )}
+          {filteredPages.length === 0 && filteredUsers.length === 0 && (
+            <div className="px-4 py-8 text-center text-sm text-[#B1ADA1]">
+              No results
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Skeleton                                                           */
+/* ------------------------------------------------------------------ */
 
 function SkeletonBlock({ className = "" }: { className?: string }) {
   return (
@@ -303,6 +549,10 @@ function AdminSkeleton() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Small components                                                   */
+/* ------------------------------------------------------------------ */
+
 function OllamaStatus({ status }: { status: string }) {
   if (status === "ready") return <span className="text-[#2E7D32]">ready</span>;
   if (status === "warming_up")
@@ -364,7 +614,32 @@ function PowerWidget({ power }: { power: PowerData }) {
 }
 
 function IntegrationTile({ integration }: { integration: Integration }) {
-  const { name, configured, description, setupUrl, setupLabel } = integration;
+  const { key, name, configured, description, setupUrl, setupLabel } =
+    integration;
+  const [healthStatus, setHealthStatus] = useState<{
+    loading: boolean;
+    status?: string;
+    detail?: string;
+  }>({ loading: false });
+
+  async function handleTest() {
+    setHealthStatus({ loading: true });
+    try {
+      const result = await admin.checkIntegrationHealth(key);
+      setHealthStatus({
+        loading: false,
+        status: result.status,
+        detail: result.detail,
+      });
+    } catch {
+      setHealthStatus({
+        loading: false,
+        status: "error",
+        detail: "Request failed",
+      });
+    }
+  }
+
   return (
     <div
       className={`rounded-xl p-4 border ${configured ? "bg-white border-[#E5E1DB]" : "bg-[#F4F3EE] border-dashed border-[#D5D0C8]"}`}
@@ -386,31 +661,49 @@ function IntegrationTile({ integration }: { integration: Integration }) {
       <p className="text-xs text-[#6F6B66] mb-3 leading-relaxed">
         {description}
       </p>
-      {!configured && setupUrl && (
-        <a
-          href={setupUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block text-xs text-[#C15F3C] hover:text-[#A84E30] transition-colors"
+      <div className="flex items-center gap-3">
+        {!configured && setupUrl && (
+          <a
+            href={setupUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block text-xs text-[#C15F3C] hover:text-[#A84E30] transition-colors"
+          >
+            {setupLabel} &rarr;
+          </a>
+        )}
+        {!configured && !setupUrl && (
+          <span className="text-xs text-[#B1ADA1]">{setupLabel}</span>
+        )}
+        <button
+          onClick={handleTest}
+          disabled={healthStatus.loading}
+          className="text-xs text-[#6F6B66] hover:text-[#2C2925] transition-colors disabled:opacity-50"
         >
-          {setupLabel} &rarr;
-        </a>
-      )}
-      {!configured && !setupUrl && (
-        <span className="text-xs text-[#B1ADA1]">{setupLabel}</span>
-      )}
+          {healthStatus.loading
+            ? "Testing..."
+            : healthStatus.status === "ok"
+              ? "\u2713 OK"
+              : healthStatus.status === "error"
+                ? "\u2717 Error"
+                : "Test"}
+        </button>
+        {healthStatus.status === "ok" && (
+          <span className="text-xs text-[#2E7D32]">\u2713 OK</span>
+        )}
+        {healthStatus.status === "error" && healthStatus.detail && (
+          <span className="text-xs text-[#C62828]" title={healthStatus.detail}>
+            {healthStatus.detail}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-white rounded-xl p-4 border border-[#E5E1DB]">
-      <div className="text-xs text-[#6F6B66] mb-1">{label}</div>
-      <div className="text-2xl font-bold">{value}</div>
-    </div>
-  );
-}
+/* ------------------------------------------------------------------ */
+/*  Invite Section                                                     */
+/* ------------------------------------------------------------------ */
 
 function InviteSection({
   invites,
@@ -544,6 +837,18 @@ function InviteSection({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  User Row                                                           */
+/* ------------------------------------------------------------------ */
+
+function usageBadgeVariant(
+  amount: number,
+): "green" | "amber" | "red" {
+  if (amount < 1) return "green";
+  if (amount < 5) return "amber";
+  return "red";
+}
+
 function UserRow({
   user,
   isSelf,
@@ -637,6 +942,11 @@ function UserRow({
         </td>
         <td className="px-4 py-3 capitalize">{user.role}</td>
         <td className="px-4 py-3">{fmtUsd(user.balance_nzd)}</td>
+        <td className="px-4 py-3">
+          <Badge variant={usageBadgeVariant(user.monthly_usage_nzd)}>
+            {fmtUsd(user.monthly_usage_nzd)}
+          </Badge>
+        </td>
         <td
           className="px-4 py-3 space-x-2"
           onClick={(e) => e.stopPropagation()}
@@ -677,7 +987,7 @@ function UserRow({
       {expanded && (
         <tr>
           <td
-            colSpan={5}
+            colSpan={6}
             className="px-4 py-4 bg-[#F4F3EE] border-b border-[#E5E1DB]"
           >
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">

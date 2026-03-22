@@ -15,6 +15,8 @@ class BalanceResponse(BaseModel):
     this_month_usage_nzd: float
     hard_limit_nzd: float
     billing_type: str
+    total_topped_up_nzd: float
+    total_used_nzd: float
 
 
 class UsageLogResponse(BaseModel):

@@ -8,7 +8,7 @@ from decimal import Decimal
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -43,11 +43,31 @@ async def account_balance(
     balance = await get_balance(db, user.id)
     month_usage = await get_this_month_usage(db, user.id)
 
+    # Total topped up (sum of all positive ledger entries)
+    topped_up_result = await db.execute(
+        select(func.coalesce(func.sum(CreditLedger.amount), 0)).where(
+            CreditLedger.user_id == user.id,
+            CreditLedger.amount > 0,
+        )
+    )
+    total_topped_up = float(topped_up_result.scalar_one())
+
+    # Total used (absolute sum of all negative ledger entries)
+    used_result = await db.execute(
+        select(func.coalesce(func.sum(CreditLedger.amount), 0)).where(
+            CreditLedger.user_id == user.id,
+            CreditLedger.amount < 0,
+        )
+    )
+    total_used = abs(float(used_result.scalar_one()))
+
     return BalanceResponse(
         balance_nzd=float(balance),
         this_month_usage_nzd=float(month_usage),
         hard_limit_nzd=float(user.hard_limit_nzd),
         billing_type=user.billing_type,
+        total_topped_up_nzd=total_topped_up,
+        total_used_nzd=total_used,
     )
 
 

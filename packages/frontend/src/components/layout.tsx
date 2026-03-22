@@ -57,24 +57,54 @@ function useServerStatus(authed: boolean): {
   return { status, health };
 }
 
-function StatusPill({ status }: { status: ServerStatus }) {
+function StatusPill({ status, health }: { status: ServerStatus; health: HealthResponse | null }) {
   const config = statusConfig[status];
+  const [hovered, setHovered] = useState(false);
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F4F3EE] text-xs">
-      <span className="relative flex h-2 w-2">
-        {config.pulse && (
+    <div
+      className="relative"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F4F3EE] text-xs cursor-default">
+        <span className="relative flex h-2 w-2">
+          {config.pulse && (
+            <span
+              className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
+              style={{ backgroundColor: config.color }}
+            />
+          )}
           <span
-            className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
+            className="relative inline-flex h-2 w-2 rounded-full"
             style={{ backgroundColor: config.color }}
           />
-        )}
-        <span
-          className="relative inline-flex h-2 w-2 rounded-full"
-          style={{ backgroundColor: config.color }}
-        />
-      </span>
-      <span className="text-[#6F6B66]">{config.label}</span>
+        </span>
+        <span className="text-[#6F6B66]">{config.label}</span>
+      </div>
+
+      {hovered && health && (
+        <div className="absolute top-full right-0 mt-1.5 z-50 w-56 bg-white border border-[#E5E1DB] rounded-lg shadow-lg p-3 text-xs space-y-1.5">
+          <div className="text-[#6F6B66]">
+            <span className="font-medium text-[#2D2B28]">Models: </span>
+            {health.ollama_models.length > 0
+              ? health.ollama_models.join(", ")
+              : "None"}
+          </div>
+          {health.power && (
+            <div className="text-[#6F6B66]">
+              <span className="font-medium text-[#2D2B28]">Power: </span>
+              {Math.round(health.power.current_watts)}w
+            </div>
+          )}
+          <div className="text-[#6F6B66]">
+            <span className="font-medium text-[#2D2B28]">Services: </span>
+            {health.services.length > 0
+              ? health.services.join(", ")
+              : "None"}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -249,7 +279,7 @@ export function Layout() {
             <h1 className="text-xl font-bold tracking-tight">
               {branding.appName}
             </h1>
-            <StatusPill status={status} />
+            <StatusPill status={status} health={health} />
           </div>
         </div>
         <nav className="flex-1 p-4 space-y-1">
@@ -257,7 +287,7 @@ export function Layout() {
             <Link
               key={item.to}
               to={item.to}
-              className="block px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
               activeProps={{ className: "bg-[#F4F3EE] text-[#2D2B28]" }}
               inactiveProps={{
                 className:
@@ -266,6 +296,12 @@ export function Layout() {
               onMouseDown={() => trigger("nudge")}
             >
               {item.label}
+              {item.label === "Account" && billingEnabled && balance !== null && balance < balanceThresholds.low && (
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#C62828] opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C62828]" />
+                </span>
+              )}
             </Link>
           ))}
         </nav>
@@ -322,7 +358,7 @@ export function Layout() {
             </h1>
           </div>
           <div className="flex-shrink-0">
-            <StatusPill status={status} />
+            <StatusPill status={status} health={health} />
           </div>
         </div>
       </div>
@@ -409,7 +445,15 @@ export function Layout() {
                 }`}
                 onMouseDown={() => trigger("nudge")}
               >
-                {Icon && <Icon className="w-5 h-5" />}
+                <span className="relative">
+                  {Icon && <Icon className="w-5 h-5" />}
+                  {item.label === "Account" && billingEnabled && balance !== null && balance < balanceThresholds.low && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-[#C62828] opacity-75 animate-ping" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-[#C62828]" />
+                    </span>
+                  )}
+                </span>
                 {item.label}
               </Link>
             );
