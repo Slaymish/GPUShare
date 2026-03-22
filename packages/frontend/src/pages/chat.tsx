@@ -15,6 +15,8 @@ import {
   Badge,
   RelativeTime,
 } from "../components/ui";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ActiveSkill {
   name: string;
@@ -92,9 +94,13 @@ export function ChatPage() {
   const [showSkillPicker, setShowSkillPicker] = useState(false);
   const [skillFilter, setSkillFilter] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [lastElapsedSeconds, setLastElapsedSeconds] = useState<number | null>(null);
+  const [lastElapsedSeconds, setLastElapsedSeconds] = useState<number | null>(
+    null,
+  );
   const [lastTokenCount, setLastTokenCount] = useState<number | null>(null);
-  const [messageReactions, setMessageReactions] = useState<Record<string, "up" | "down">>({});
+  const [messageReactions, setMessageReactions] = useState<
+    Record<string, "up" | "down">
+  >({});
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -119,7 +125,10 @@ export function ChatPage() {
         setBillingEnabled(h.integrations.billing && h.integrations.stripe),
       )
       .catch(() => {});
-    skillsApi.list().then(setSkillCatalog).catch(() => {});
+    skillsApi
+      .list()
+      .then(setSkillCatalog)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -147,7 +156,9 @@ export function ChatPage() {
       setLastTokenCount(null);
       elapsedInterval.current = setInterval(() => {
         if (streamStartTime.current) {
-          setElapsedSeconds(Math.floor((Date.now() - streamStartTime.current) / 1000));
+          setElapsedSeconds(
+            Math.floor((Date.now() - streamStartTime.current) / 1000),
+          );
         }
       }, 1000);
     } else {
@@ -156,7 +167,9 @@ export function ChatPage() {
         elapsedInterval.current = null;
       }
       if (streamStartTime.current) {
-        setLastElapsedSeconds(Math.floor((Date.now() - streamStartTime.current) / 1000));
+        setLastElapsedSeconds(
+          Math.floor((Date.now() - streamStartTime.current) / 1000),
+        );
         streamStartTime.current = null;
       }
     }
@@ -587,12 +600,6 @@ export function ChatPage() {
             <SelectTrigger className="max-w-full">
               <div className="flex items-center gap-2">
                 <SelectValue />
-                {currentModel && (
-                  <span className="flex items-center gap-1">
-                    {getModelBadge(currentModel)}
-                    {getColdStartBadge(currentModel)}
-                  </span>
-                )}
               </div>
             </SelectTrigger>
             <SelectContent>
@@ -612,16 +619,8 @@ export function ChatPage() {
             if (!m) return null;
             return (
               <span className="flex items-center gap-2 text-xs flex-wrap">
-                <span
-                  className={`px-1.5 py-0.5 rounded whitespace-nowrap ${m.owned_by === "local" ? "bg-[#E8F5E9] text-[#2E7D32]" : "bg-[#EDE7F6] text-[#5E35B1]"}`}
-                >
-                  {m.owned_by === "local" ? "Local GPU" : "OpenRouter"}
-                </span>
-                {m.owned_by === "local" && !m.loaded && (
-                  <span className="px-1.5 py-0.5 rounded bg-[#FFF3E0] text-[#E65100] whitespace-nowrap">
-                    Not loaded — first message will be slower
-                  </span>
-                )}
+                {getModelBadge(m)}
+                {getColdStartBadge(m)}
                 {m.cost_per_million_tokens > 0 &&
                   (billingEnabled || m.owned_by !== "local") && (
                     <span className="text-[#B1ADA1] whitespace-nowrap">
@@ -666,54 +665,38 @@ export function ChatPage() {
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`group relative max-w-2xl w-fit rounded-xl px-4 py-3 text-sm whitespace-pre-wrap break-words ${msg.role === "user" ? "max-w-[85%]" : "max-w-[85%]"} ${
+                    className={`group relative max-w-2xl w-fit rounded-xl px-4 py-3 text-sm break-words ${msg.role === "user" ? "max-w-[85%]" : "max-w-[85%]"} ${
                       msg.role === "user"
-                        ? "bg-[#C15F3C] text-white"
+                        ? "bg-[#C15F3C] text-white whitespace-pre-wrap"
                         : "bg-white text-[#2D2B28] border border-[#E5E1DB]"
                     }`}
                   >
-                    {msg.content}
-                    {msg.role === "assistant" &&
-                      msg.content === "" &&
-                      streaming && (
-                        <span className="animate-pulse text-[#B1ADA1]">
-                          {queuePosition !== null && queuePosition > 0
-                            ? `Position ${queuePosition} in queue...`
-                            : `Generating\u2026 ${elapsedSeconds}s`}
-                        </span>
-                      )}
+                    {msg.role === "user" ? (
+                      msg.content
+                    ) : msg.content === "" && streaming ? (
+                      <span className="animate-pulse text-[#B1ADA1]">
+                        {queuePosition !== null && queuePosition > 0
+                          ? `Position ${queuePosition} in queue...`
+                          : `Generating\u2026 ${elapsedSeconds}s`}
+                      </span>
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        className="prose prose-sm max-w-none prose-pre:bg-[#F4F3EE] prose-pre:text-[#2D2B28] prose-code:text-[#C15F3C] prose-code:bg-[#F4F3EE] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-['']"
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    )}
 
                     {/* Per-message action bar for assistant messages */}
                     {msg.role === "assistant" && msg.content !== "" && (
-                      <div className="absolute -bottom-8 left-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <div className="absolute -bottom-8 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button
                           onClick={() => handleCopy(msg.content, i)}
                           className="px-1.5 py-1 rounded text-xs bg-white border border-[#E5E1DB] text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1] transition-colors"
                           title="Copy"
                         >
                           {copiedIndex === i ? "Copied" : "Copy"}
-                        </button>
-                        <button
-                          onClick={() => toggleReaction(msgReactionKey, "up")}
-                          className={`px-1.5 py-1 rounded text-xs border transition-colors ${
-                            messageReactions[msgReactionKey] === "up"
-                              ? "bg-[#E8F5E9] border-[#2E7D32] text-[#2E7D32]"
-                              : "bg-white border-[#E5E1DB] text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1]"
-                          }`}
-                          title="Thumbs up"
-                        >
-                          &#x1F44D;
-                        </button>
-                        <button
-                          onClick={() => toggleReaction(msgReactionKey, "down")}
-                          className={`px-1.5 py-1 rounded text-xs border transition-colors ${
-                            messageReactions[msgReactionKey] === "down"
-                              ? "bg-[#FFEBEE] border-[#C62828] text-[#C62828]"
-                              : "bg-white border-[#E5E1DB] text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1]"
-                          }`}
-                          title="Thumbs down"
-                        >
-                          &#x1F44E;
                         </button>
                         {isLastAssistant && (
                           <button
@@ -730,14 +713,18 @@ export function ChatPage() {
                 </div>
 
                 {/* Generated in Xs indicator after last assistant message */}
-                {isLastAssistant && !streaming && lastElapsedSeconds !== null && msg.content !== "" && (
-                  <div className="flex justify-start mt-1">
-                    <span className="text-[10px] text-[#B1ADA1]">
-                      Generated in {lastElapsedSeconds}s
-                      {lastTokenCount !== null && ` \u00B7 ${lastTokenCount} tokens`}
-                    </span>
-                  </div>
-                )}
+                {isLastAssistant &&
+                  !streaming &&
+                  lastElapsedSeconds !== null &&
+                  msg.content !== "" && (
+                    <div className="flex justify-start mt-1">
+                      <span className="text-[10px] text-[#B1ADA1]">
+                        Generated in {lastElapsedSeconds}s
+                        {lastTokenCount !== null &&
+                          ` \u00B7 ${lastTokenCount} tokens`}
+                      </span>
+                    </div>
+                  )}
 
                 {/* Streaming elapsed indicator */}
                 {isLastAssistant && streaming && msg.content !== "" && (
