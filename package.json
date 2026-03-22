@@ -18,6 +18,8 @@
     "server:shell": "docker compose exec fastapi bash",
     "db:migrate": "docker compose exec fastapi alembic upgrade head",
     "db:revision": "docker compose exec fastapi alembic revision --autogenerate -m",
+    "db:revision:sync": "docker compose cp fastapi:/app/alembic/versions/. packages/server/alembic/versions/",
+    "db:new": "pnpm db:revision && pnpm db:revision:sync",
     "docs": "echo 'OpenAPI docs available at http://localhost:8000/docs'",
     "docs:open": "open http://localhost:8000/docs",
     "swagger": "open http://localhost:8000/docs",
