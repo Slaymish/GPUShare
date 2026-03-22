@@ -32,4 +32,5 @@ class SystemStatsResponse(BaseModel):
     active_users: int
     total_inference_cost_nzd: float
     total_render_cost_nzd: float
+    total_balance_nzd: float
     jobs_in_queue: int

@@ -21,6 +21,7 @@ export interface SystemStatsResponse {
   active_users: number;
   total_inference_cost_nzd: number;
   total_render_cost_nzd: number;
+  total_balance_nzd: number;
   jobs_in_queue: number;
 }
 

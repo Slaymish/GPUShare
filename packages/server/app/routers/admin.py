@@ -160,6 +160,12 @@ async def system_stats(
     )
     total_render_cost_nzd = abs(float(render_result.scalar_one()))
 
+    # Total balance across all users (sum of entire ledger)
+    balance_result = await db.execute(
+        select(func.coalesce(func.sum(CreditLedger.amount), 0))
+    )
+    total_balance_nzd = float(balance_result.scalar_one())
+
     # Jobs in queue
     queue_result = await db.execute(
         select(func.count()).select_from(RenderJob).where(RenderJob.status == "queued")
@@ -171,5 +177,6 @@ async def system_stats(
         active_users=active_users,
         total_inference_cost_nzd=total_inference_cost_nzd,
         total_render_cost_nzd=total_render_cost_nzd,
+        total_balance_nzd=total_balance_nzd,
         jobs_in_queue=jobs_in_queue,
     )

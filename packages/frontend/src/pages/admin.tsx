@@ -132,9 +132,13 @@ export function AdminPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard label="Total Users" value={String(stats.total_users)} />
           <StatCard label="Active Users" value={String(stats.active_users)} />
+          <StatCard
+            label="Total Balance"
+            value={`$${stats.total_balance_nzd.toFixed(2)}`}
+          />
           <StatCard
             label="Inference Cost"
             value={`$${stats.total_inference_cost_nzd.toFixed(2)}`}
