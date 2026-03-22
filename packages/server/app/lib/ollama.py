@@ -62,7 +62,12 @@ async def chat_completion(
 
     async with httpx.AsyncClient(timeout=300.0) as client:
         resp = await client.post(f"{settings.OLLAMA_HOST}/api/chat", json=payload)
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            try:
+                detail = resp.json().get("error", resp.text)
+            except Exception:
+                detail = resp.text
+            raise RuntimeError(f"Ollama error: {detail}")
         return resp.json()
 
 
@@ -90,7 +95,18 @@ async def chat_completion_stream(
 
     async with httpx.AsyncClient(timeout=300.0) as client:
         async with client.stream("POST", f"{settings.OLLAMA_HOST}/api/chat", json=payload) as resp:
-            resp.raise_for_status()
+            if resp.status_code >= 400:
+                # Read the body to get Ollama's error message before raising
+                body = await resp.aread()
+                try:
+                    detail = json.loads(body).get("error", body.decode())
+                except Exception:
+                    detail = body.decode()
+                raise RuntimeError(f"Ollama error: {detail}")
             async for line in resp.aiter_lines():
                 if line.strip():
-                    yield json.loads(line)
+                    chunk = json.loads(line)
+                    # Ollama can return an error mid-stream
+                    if "error" in chunk:
+                        raise RuntimeError(f"Ollama error: {chunk['error']}")
+                    yield chunk
