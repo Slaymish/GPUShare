@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.lib.billing import get_balance, write_ledger_entry
+from app.lib.billing import get_balance, get_this_month_usage, write_ledger_entry
 from app.models import CreditLedger, RenderJob, User
 from app.routers.auth import require_admin
 from app.schemas.admin import (
@@ -31,6 +31,7 @@ router = APIRouter(prefix="/v1/admin", tags=["admin"])
 async def _user_to_response(db: AsyncSession, user: User) -> AdminUserResponse:
     """Convert a User ORM object to an AdminUserResponse with balance."""
     balance = await get_balance(db, user.id)
+    month_usage = await get_this_month_usage(db, user.id)
     return AdminUserResponse(
         id=user.id,
         email=user.email,
@@ -42,6 +43,7 @@ async def _user_to_response(db: AsyncSession, user: User) -> AdminUserResponse:
         services_enabled=user.services_enabled,
         created_at=user.created_at,
         balance_nzd=float(balance),
+        monthly_usage_nzd=float(month_usage),
     )
 
 
@@ -180,3 +182,90 @@ async def system_stats(
         total_balance_nzd=total_balance_nzd,
         jobs_in_queue=jobs_in_queue,
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /v1/admin/health/{integration_key}
+# ---------------------------------------------------------------------------
+
+
+@router.get("/health/{integration_key}")
+async def check_integration_health(
+    integration_key: str,
+    _admin: User = Depends(require_admin),
+):
+    """Test connectivity for a specific integration."""
+    import httpx
+    from app.config import get_settings
+
+    settings = get_settings()
+
+    checks = {
+        "ollama": _check_ollama,
+        "stripe": _check_stripe,
+        "r2": _check_r2,
+        "resend": _check_resend,
+        "openrouter": _check_openrouter,
+        "tapo": _check_tapo,
+    }
+
+    check_fn = checks.get(integration_key)
+    if not check_fn:
+        raise HTTPException(status_code=404, detail="Unknown integration")
+
+    try:
+        await check_fn(settings)
+        return {"status": "ok", "integration": integration_key}
+    except Exception as e:
+        return {"status": "error", "integration": integration_key, "detail": str(e)}
+
+
+async def _check_ollama(settings):
+    import httpx
+    async with httpx.AsyncClient(timeout=5) as client:
+        r = await client.get(f"{settings.OLLAMA_BASE_URL}/api/tags")
+        r.raise_for_status()
+
+
+async def _check_stripe(settings):
+    import stripe as stripe_lib
+    stripe_lib.api_key = settings.STRIPE_SECRET_KEY
+    stripe_lib.Account.retrieve()
+
+
+async def _check_r2(settings):
+    import boto3
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=settings.R2_ENDPOINT_URL,
+        aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+    )
+    s3.head_bucket(Bucket=settings.R2_BUCKET_NAME)
+
+
+async def _check_resend(settings):
+    import httpx
+    async with httpx.AsyncClient(timeout=5) as client:
+        r = await client.get(
+            "https://api.resend.com/domains",
+            headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}"},
+        )
+        r.raise_for_status()
+
+
+async def _check_openrouter(settings):
+    import httpx
+    async with httpx.AsyncClient(timeout=5) as client:
+        r = await client.get(
+            "https://openrouter.ai/api/v1/models",
+            headers={"Authorization": f"Bearer {settings.OPENROUTER_API_KEY}"},
+        )
+        r.raise_for_status()
+
+
+async def _check_tapo(settings):
+    import httpx
+    async with httpx.AsyncClient(timeout=5) as client:
+        r = await client.get(f"http://{settings.TAPO_IP}/api/v1/status", timeout=3)
+        r.raise_for_status()

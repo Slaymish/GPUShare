@@ -13,6 +13,7 @@ class AdminUserResponse(UserResponse):
     model_config = ConfigDict(from_attributes=True)
 
     balance_nzd: float
+    monthly_usage_nzd: float
 
 
 class UserUpdateRequest(BaseModel):

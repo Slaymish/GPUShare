@@ -102,7 +102,19 @@ async function request<T>(
     const text = await res.text();
     let message: string;
     try {
-      message = JSON.parse(text).detail || text;
+      const json = JSON.parse(text);
+      // Handle FastAPI validation errors (422)
+      if (Array.isArray(json.detail)) {
+        message = json.detail
+          .map((err: any) => `${err.loc.join(".")}: ${err.msg}`)
+          .join(", ");
+      } else if (typeof json.detail === "string") {
+        message = json.detail;
+      } else if (typeof json.detail === "object") {
+        message = JSON.stringify(json.detail);
+      } else {
+        message = text;
+      }
     } catch {
       message = text;
     }
@@ -132,7 +144,19 @@ async function requestFormData<T>(
     const text = await res.text();
     let message: string;
     try {
-      message = JSON.parse(text).detail || text;
+      const json = JSON.parse(text);
+      // Handle FastAPI validation errors (422)
+      if (Array.isArray(json.detail)) {
+        message = json.detail
+          .map((err: any) => `${err.loc.join(".")}: ${err.msg}`)
+          .join(", ");
+      } else if (typeof json.detail === "string") {
+        message = json.detail;
+      } else if (typeof json.detail === "object") {
+        message = JSON.stringify(json.detail);
+      } else {
+        message = text;
+      }
     } catch {
       message = text;
     }
@@ -287,7 +311,8 @@ export const render = {
 // Skills
 export const skills = {
   list: () => get<SkillSummary[]>("/v1/skills"),
-  get: (name: string) => get<SkillDetail>(`/v1/skills/${encodeURIComponent(name)}`),
+  get: (name: string) =>
+    get<SkillDetail>(`/v1/skills/${encodeURIComponent(name)}`),
 };
 
 // Admin
@@ -304,6 +329,10 @@ export const admin = {
   createInvite: (data: InviteCreateRequest) =>
     post<InviteCreateResponse>("/v1/admin/invites", data),
   deleteInvite: (id: string) => del<void>(`/v1/admin/invites/${id}`),
+  checkIntegrationHealth: (key: string) =>
+    get<{ status: string; integration: string; detail?: string }>(
+      `/v1/admin/health/${key}`,
+    ),
 };
 
 export { ApiError };
