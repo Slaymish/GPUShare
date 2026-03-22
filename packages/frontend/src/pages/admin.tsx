@@ -128,7 +128,7 @@ export function AdminPage() {
   const integrations = getIntegrations(health);
 
   return (
-    <div className="p-6 space-y-8 max-w-6xl pb-20 md:pb-0">
+    <div className="p-6 space-y-8 max-w-6xl pb-20 md:pb-12">
       <h2 className="text-lg font-semibold">Admin Dashboard</h2>
 
       {/* Stats */}
@@ -234,7 +234,7 @@ function SkeletonBlock({ className = "" }: { className?: string }) {
 
 function AdminSkeleton() {
   return (
-    <div className="p-6 space-y-8 max-w-6xl pb-20 md:pb-0">
+    <div className="p-6 space-y-8 max-w-6xl pb-20 md:pb-12">
       <SkeletonBlock className="h-6 w-48" />
 
       {/* Stats grid */}
