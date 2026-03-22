@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import AsyncGenerator
 
 import httpx
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
@@ -111,9 +114,16 @@ async def _get_model_pricing(model: str) -> tuple[float, float]:
                     float(pricing.get("completion", "0")),
                 )
     except Exception:
-        pass
+        logger.warning("Failed to fetch OpenRouter model pricing for %s", model, exc_info=True)
 
-    return _pricing_cache.get(model, (0.0, 0.0))
+    rates = _pricing_cache.get(model, (0.0, 0.0))
+    if rates == (0.0, 0.0):
+        logger.warning(
+            "OpenRouter pricing for model %s is $0 — usage will not be billed. "
+            "Check that the model ID matches OpenRouter's catalog.",
+            model,
+        )
+    return rates
 
 
 async def list_models() -> list[dict]:

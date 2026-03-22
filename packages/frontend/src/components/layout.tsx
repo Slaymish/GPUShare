@@ -11,6 +11,7 @@ import {
   balanceThresholds,
 } from "../theme.config";
 import { Button } from "./ui";
+import { fmtUsd } from "../lib/format";
 
 type ServerStatus = "online" | "warming_up" | "degraded" | "offline";
 
@@ -285,7 +286,7 @@ export function Layout() {
                         : "text-[#C62828]"
                 }
               >
-                ${Math.abs(balance).toFixed(2)}
+                {fmtUsd(balance)}
               </span>
             </div>
           )}
@@ -365,7 +366,7 @@ export function Layout() {
                             : "text-[#C62828]"
                     }
                   >
-                    ${Math.abs(balance).toFixed(2)}
+                    {fmtUsd(balance)}
                   </span>
                 </div>
               )}

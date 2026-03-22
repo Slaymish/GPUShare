@@ -10,6 +10,7 @@ import type {
 } from "@shared/types/billing";
 import { Button, Input } from "../components/ui";
 import { PaymentMethodSetup } from "../components/PaymentMethodSetup";
+import { fmtUsd } from "../lib/format";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -184,19 +185,19 @@ export function AccountPage() {
           <div
             className={`text-4xl font-bold ${balanceColor(balance.balance_nzd)}`}
           >
-            ${Math.abs(balance.balance_nzd).toFixed(2)}
+            {fmtUsd(balance.balance_nzd)}
           </div>
           <div className="mt-3 text-sm text-[#6F6B66] flex flex-wrap gap-x-4 gap-y-1">
             <span>
               This month:{" "}
               <span className="text-[#2D2B28]">
-                ${balance.this_month_usage_nzd.toFixed(2)}
+                {fmtUsd(balance.this_month_usage_nzd)}
               </span>
             </span>
             <span>
               Limit:{" "}
               <span className="text-[#2D2B28]">
-                ${balance.hard_limit_nzd.toFixed(2)}
+                {fmtUsd(balance.hard_limit_nzd)}
               </span>
             </span>
             <span>

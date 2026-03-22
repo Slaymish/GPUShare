@@ -4,6 +4,7 @@ import { admin, getHealth } from "../lib/api";
 import type { HealthResponse, PowerData } from "../lib/api";
 import { parseToken } from "../lib/auth";
 import { Button, Input } from "../components/ui";
+import { fmtUsd } from "../lib/format";
 import type {
   AdminUserResponse,
   UserUpdateRequest,
@@ -137,15 +138,15 @@ export function AdminPage() {
           <StatCard label="Active Users" value={String(stats.active_users)} />
           <StatCard
             label="Total Balance"
-            value={`$${stats.total_balance_nzd.toFixed(2)}`}
+            value={fmtUsd(stats.total_balance_nzd)}
           />
           <StatCard
             label="Inference Cost"
-            value={`$${stats.total_inference_cost_nzd.toFixed(2)}`}
+            value={fmtUsd(stats.total_inference_cost_nzd)}
           />
           <StatCard
             label="Render Cost"
-            value={`$${stats.total_render_cost_nzd.toFixed(2)}`}
+            value={fmtUsd(stats.total_render_cost_nzd)}
           />
           <StatCard label="Queue Size" value={String(stats.jobs_in_queue)} />
         </div>
@@ -265,13 +266,13 @@ function PowerWidget({ power }: { power: PowerData }) {
         </div>
         <div>
           <div className="text-lg font-semibold text-[#2E7D32]">
-            ${power.today_cost.toFixed(2)}
+            {fmtUsd(power.today_cost)}
           </div>
           <div className="text-xs text-[#B1ADA1]">Cost today</div>
         </div>
         <div>
           <div className="text-lg font-semibold text-[#2E7D32]">
-            ${power.month_cost.toFixed(2)}
+            {fmtUsd(power.month_cost)}
           </div>
           <div className="text-xs text-[#B1ADA1]">Cost this month</div>
         </div>
@@ -556,7 +557,7 @@ function UserRow({
           </span>
         </td>
         <td className="px-4 py-3 capitalize">{user.role}</td>
-        <td className="px-4 py-3">${user.balance_nzd.toFixed(2)}</td>
+        <td className="px-4 py-3">{fmtUsd(user.balance_nzd)}</td>
         <td
           className="px-4 py-3 space-x-2"
           onClick={(e) => e.stopPropagation()}
