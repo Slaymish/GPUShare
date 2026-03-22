@@ -2,6 +2,7 @@ export interface SignupRequest {
   email: string;
   password: string;
   name?: string;
+  bootstrap_token?: string;
 }
 
 export interface LoginRequest {

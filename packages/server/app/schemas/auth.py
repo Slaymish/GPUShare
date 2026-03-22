@@ -12,6 +12,7 @@ class SignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
     name: str | None = None
+    bootstrap_token: str | None = None
 
 
 class LoginRequest(BaseModel):

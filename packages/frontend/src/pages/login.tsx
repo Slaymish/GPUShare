@@ -12,7 +12,9 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [bootstrapToken, setBootstrapToken] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
 
@@ -35,11 +37,28 @@ export function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setNotice("");
     setLoading(true);
     try {
-      const res = isSignup
-        ? await authApi.signup({ email, password, name: name || undefined })
-        : await authApi.login({ email, password });
+      if (isSignup) {
+        const signup = await authApi.signup({
+          email,
+          password,
+          name: name || undefined,
+          bootstrap_token: bootstrapToken || undefined,
+        });
+
+        if (signup.status !== "active") {
+          trigger("success");
+          setIsSignup(false);
+          setBootstrapToken("");
+          setPassword("");
+          setNotice("Account created. An admin must approve it before you can sign in.");
+          return;
+        }
+      }
+
+      const res = await authApi.login({ email, password });
       setToken(res.access_token);
       trigger("success");
       router.navigate({ to: "/chat" });
@@ -75,6 +94,12 @@ export function LoginPage() {
             </div>
           )}
 
+          {notice && (
+            <div className="bg-[#E8F5E9] border border-[#C8E6C9] text-[#2E7D32] text-sm rounded-lg p-3">
+              {notice}
+            </div>
+          )}
+
           {isSignup && (
             <div>
               <label className="block text-sm text-[#6F6B66] mb-1">Name</label>
@@ -83,6 +108,23 @@ export function LoginPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
+            </div>
+          )}
+
+          {isSignup && (
+            <div>
+              <label className="block text-sm text-[#6F6B66] mb-1">
+                Bootstrap Token
+              </label>
+              <Input
+                type="password"
+                value={bootstrapToken}
+                onChange={(e) => setBootstrapToken(e.target.value)}
+                placeholder="Required for the first admin only"
+              />
+              <p className="text-xs text-[#B1ADA1] mt-1">
+                Needed only when creating the initial admin account.
+              </p>
             </div>
           )}
 
@@ -118,6 +160,8 @@ export function LoginPage() {
             onClick={() => {
               setIsSignup(!isSignup);
               setError("");
+              setNotice("");
+              setBootstrapToken("");
             }}
             variant="ghost"
             className="w-full"

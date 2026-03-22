@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     INVITE_ONLY: bool = True
     REQUIRE_APPROVAL: bool = True
     NODE_NAME: str = "My GPU Node"
+    INITIAL_ADMIN_BOOTSTRAP_TOKEN: str = ""
 
     # ── Tapo smart plug (energy monitoring) ──────────────────────────────
     TAPO_EMAIL: str = ""

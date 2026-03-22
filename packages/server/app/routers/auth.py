@@ -71,9 +71,9 @@ def _get_client_ip(request: Request) -> str:
     return "unknown"
 
 
-def _self_signup_allowed(*, invite_only: bool, user_count: int) -> bool:
-    """Allow public signup only when the node is open or during first-user bootstrap."""
-    return user_count == 0 or not invite_only
+def _self_signup_allowed(*, invite_only: bool) -> bool:
+    """Allow public signup only when the node is open."""
+    return not invite_only
 
 
 limiter = Limiter(key_func=_get_client_ip)
@@ -199,12 +199,29 @@ async def signup(
 ):
     """Register a new user account."""
 
-    # Determine if this is the very first user (bootstrap admin is always allowed).
+    # Serialize initial signup so two concurrent requests cannot both race for bootstrap.
+    await db.execute(select(func.pg_advisory_xact_lock(0x47505553)))
+
+    # Determine if this is the very first user.
     count_result = await db.execute(select(func.count()).select_from(User))
     user_count = count_result.scalar() or 0
     is_first_user = user_count == 0
 
-    if not _self_signup_allowed(invite_only=settings.INVITE_ONLY, user_count=user_count):
+    if is_first_user:
+        expected_bootstrap_token = settings.INITIAL_ADMIN_BOOTSTRAP_TOKEN.strip()
+        if not expected_bootstrap_token:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Initial admin bootstrap is not configured. Set INITIAL_ADMIN_BOOTSTRAP_TOKEN before creating the first account.",
+            )
+        if not body.bootstrap_token or not secrets.compare_digest(
+            body.bootstrap_token, expected_bootstrap_token
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="A valid bootstrap token is required to create the first admin account.",
+            )
+    elif not _self_signup_allowed(invite_only=settings.INVITE_ONLY):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Self-signup is disabled on this server. Use an invite link or ask an admin for access.",
