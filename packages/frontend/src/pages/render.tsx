@@ -13,10 +13,10 @@ import {
 } from "../components/ui";
 
 const STATUS_STYLES: Record<string, string> = {
-  queued: "bg-yellow-900/50 text-yellow-300 border-yellow-700",
-  rendering: "bg-blue-900/50 text-blue-300 border-blue-700",
-  complete: "bg-green-900/50 text-green-300 border-green-700",
-  failed: "bg-red-900/50 text-red-300 border-red-700",
+  queued: "bg-[#FFF3E0] text-[#E65100] border-[#FFE0B2]",
+  rendering: "bg-[#E3F2FD] text-[#1565C0] border-[#BBDEFB]",
+  complete: "bg-[#E8F5E9] text-[#2E7D32] border-[#C8E6C9]",
+  failed: "bg-[#FFEBEE] text-[#C62828] border-[#FFCDD2]",
 };
 
 export function RenderPage() {
@@ -46,7 +46,6 @@ export function RenderPage() {
     fetchJobs();
   }, []);
 
-  // Auto-refresh while any jobs are active
   useEffect(() => {
     const hasActive = jobs.some(
       (j) => j.status === "queued" || j.status === "rendering",
@@ -99,19 +98,19 @@ export function RenderPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="bg-gray-800 rounded-xl p-4 md:p-6 space-y-4"
+        className="bg-white rounded-xl p-4 md:p-6 space-y-4 border border-[#E5E1DB]"
       >
         <h3 className="font-medium">New Render Job</h3>
 
         {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 text-sm rounded-lg p-3">
+          <div className="bg-[#FFEBEE] border border-[#FFCDD2] text-[#C62828] text-sm rounded-lg p-3">
             {error}
           </div>
         )}
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div className="col-span-2 md:col-span-3">
-            <label className="block text-sm text-gray-400 mb-1">
+            <label className="block text-sm text-[#6F6B66] mb-1">
               Blend File
             </label>
             <Input
@@ -119,12 +118,12 @@ export function RenderPage() {
               type="file"
               accept=".blend"
               required
-              className="w-full text-sm text-gray-400 file:mr-4 file:rounded-lg file:border-0 file:bg-gray-700 file:px-4 file:py-2 file:text-sm file:text-white hover:file:bg-gray-600"
+              className="w-full text-sm text-[#6F6B66] file:mr-4 file:rounded-lg file:border-0 file:bg-[#EDEAE3] file:px-4 file:py-2 file:text-sm file:text-[#2D2B28] hover:file:bg-[#E5E1DB]"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Engine</label>
+            <label className="block text-sm text-[#6F6B66] mb-1">Engine</label>
             <Select
               value={engine}
               onValueChange={(value) => setEngine(value as any)}
@@ -140,7 +139,7 @@ export function RenderPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
+            <label className="block text-sm text-[#6F6B66] mb-1">
               Frame Start
             </label>
             <Input
@@ -148,12 +147,11 @@ export function RenderPage() {
               value={frameStart}
               onChange={(e) => setFrameStart(e.target.value)}
               min={1}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
+            <label className="block text-sm text-[#6F6B66] mb-1">
               Frame End
             </label>
             <Input
@@ -161,12 +159,11 @@ export function RenderPage() {
               value={frameEnd}
               onChange={(e) => setFrameEnd(e.target.value)}
               min={1}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
+            <label className="block text-sm text-[#6F6B66] mb-1">
               Resolution X
             </label>
             <Input
@@ -174,12 +171,11 @@ export function RenderPage() {
               value={resX}
               onChange={(e) => setResX(e.target.value)}
               min={1}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
+            <label className="block text-sm text-[#6F6B66] mb-1">
               Resolution Y
             </label>
             <Input
@@ -187,12 +183,11 @@ export function RenderPage() {
               value={resY}
               onChange={(e) => setResY(e.target.value)}
               min={1}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">
+            <label className="block text-sm text-[#6F6B66] mb-1">
               Output Format
             </label>
             <Select
@@ -216,18 +211,18 @@ export function RenderPage() {
         </Button>
       </form>
 
-      <div className="bg-gray-800 rounded-xl overflow-hidden">
+      <div className="bg-white rounded-xl overflow-hidden border border-[#E5E1DB]">
         {loading ? (
-          <div className="p-6 text-center text-gray-500">Loading...</div>
+          <div className="p-6 text-center text-[#B1ADA1]">Loading...</div>
         ) : jobs.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
+          <div className="p-6 text-center text-[#B1ADA1]">
             No render jobs yet
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead>
-                <tr className="border-b border-gray-700 text-gray-400 text-left">
+                <tr className="border-b border-[#E5E1DB] text-[#6F6B66] text-left">
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Engine</th>
                   <th className="px-4 py-3 font-medium">Frames</th>
@@ -239,7 +234,7 @@ export function RenderPage() {
               </thead>
               <tbody>
                 {jobs.map((job) => (
-                  <tr key={job.id} className="border-b border-gray-700/50">
+                  <tr key={job.id} className="border-b border-[#EDEBE6]">
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[job.status] || ""}`}
@@ -261,7 +256,7 @@ export function RenderPage() {
                         ? `$${job.cost_nzd.toFixed(4)}`
                         : "-"}
                     </td>
-                    <td className="px-4 py-3 text-gray-400">
+                    <td className="px-4 py-3 text-[#6F6B66]">
                       {new Date(job.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 space-x-2">
@@ -270,7 +265,7 @@ export function RenderPage() {
                           href={job.download_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-blue-400 hover:text-blue-300 text-xs"
+                          className="text-[#C15F3C] hover:text-[#A84E30] text-xs"
                         >
                           Download
                         </a>
@@ -281,14 +276,14 @@ export function RenderPage() {
                           onClick={() => handleCancel(job.id)}
                           variant="ghost"
                           size="sm"
-                          className="text-red-400 hover:text-red-300 text-xs h-auto py-1"
+                          className="text-[#C62828] hover:text-[#B71C1C] text-xs h-auto py-1"
                         >
                           Cancel
                         </Button>
                       )}
                       {job.error_message && (
                         <span
-                          className="text-red-400 text-xs"
+                          className="text-[#C62828] text-xs"
                           title={job.error_message}
                         >
                           Error

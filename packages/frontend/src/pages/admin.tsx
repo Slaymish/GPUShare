@@ -122,7 +122,7 @@ export function AdminPage() {
     fetchData();
   }, []);
 
-  if (loading) return <div className="p-6 text-gray-500">Loading...</div>;
+  if (loading) return <div className="p-6 text-[#B1ADA1]">Loading...</div>;
 
   const integrations = getIntegrations(health);
 
@@ -147,17 +147,17 @@ export function AdminPage() {
         </div>
       )}
 
-      {/* Live Power — Tapo Smart Plug */}
+      {/* Live Power */}
       {health?.power && <PowerWidget power={health.power} />}
 
       {/* Server Status */}
       {health && (
-        <div className="bg-gray-800 rounded-xl p-5">
+        <div className="bg-white rounded-xl p-5 border border-[#E5E1DB]">
           <div className="flex items-center gap-3 mb-1">
-            <h3 className="text-sm font-semibold text-gray-200">Server</h3>
-            <span className="text-xs text-gray-500">{health.node}</span>
+            <h3 className="text-sm font-semibold">Server</h3>
+            <span className="text-xs text-[#B1ADA1]">{health.node}</span>
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-400">
+          <div className="flex items-center gap-4 text-sm text-[#6F6B66]">
             <span>Services: {health.services.join(", ")}</span>
             <span>
               Ollama: <OllamaStatus status={health.ollama} />
@@ -171,7 +171,7 @@ export function AdminPage() {
 
       {/* Integrations */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-300 mb-3">
+        <h3 className="text-sm font-semibold text-[#6F6B66] mb-3">
           Integrations
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -186,11 +186,11 @@ export function AdminPage() {
 
       {/* Users Table */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-300 mb-3">Users</h3>
-        <div className="bg-gray-800 rounded-xl overflow-hidden">
+        <h3 className="text-sm font-semibold text-[#6F6B66] mb-3">Users</h3>
+        <div className="bg-white rounded-xl overflow-hidden border border-[#E5E1DB]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-700 text-gray-400 text-left">
+              <tr className="border-b border-[#E5E1DB] text-[#6F6B66] text-left">
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Role</th>
@@ -220,59 +220,59 @@ export function AdminPage() {
 }
 
 function OllamaStatus({ status }: { status: string }) {
-  if (status === "ready") return <span className="text-green-400">ready</span>;
+  if (status === "ready") return <span className="text-[#2E7D32]">ready</span>;
   if (status === "warming_up")
-    return <span className="text-yellow-400">warming up</span>;
-  return <span className="text-red-400">offline</span>;
+    return <span className="text-[#E65100]">warming up</span>;
+  return <span className="text-[#C62828]">offline</span>;
 }
 
 function PowerWidget({ power }: { power: PowerData }) {
   return (
-    <div className="bg-gray-800 rounded-xl p-5">
+    <div className="bg-white rounded-xl p-5 border border-[#E5E1DB]">
       <div className="flex items-center gap-2 mb-3">
-        <h3 className="text-sm font-semibold text-gray-200">Live Power</h3>
-        <span className="text-xs text-gray-500">via Tapo P110</span>
+        <h3 className="text-sm font-semibold">Live Power</h3>
+        <span className="text-xs text-[#B1ADA1]">via Tapo P110</span>
         <span className="relative flex h-2 w-2 ml-1">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75 animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+          <span className="absolute inline-flex h-full w-full rounded-full bg-[#2E7D32] opacity-75 animate-ping" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#2E7D32]" />
         </span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div>
           <div className="text-2xl font-bold">
             {power.current_watts}
-            <span className="text-sm font-normal text-gray-400">W</span>
+            <span className="text-sm font-normal text-[#6F6B66]">W</span>
           </div>
-          <div className="text-xs text-gray-500">Drawing now</div>
+          <div className="text-xs text-[#B1ADA1]">Drawing now</div>
         </div>
         <div>
           <div className="text-lg font-semibold">
             {power.today_kwh}
-            <span className="text-sm font-normal text-gray-400"> kWh</span>
+            <span className="text-sm font-normal text-[#6F6B66]"> kWh</span>
           </div>
-          <div className="text-xs text-gray-500">Today</div>
+          <div className="text-xs text-[#B1ADA1]">Today</div>
         </div>
         <div>
           <div className="text-lg font-semibold">
             {power.month_kwh}
-            <span className="text-sm font-normal text-gray-400"> kWh</span>
+            <span className="text-sm font-normal text-[#6F6B66]"> kWh</span>
           </div>
-          <div className="text-xs text-gray-500">This month</div>
+          <div className="text-xs text-[#B1ADA1]">This month</div>
         </div>
         <div>
-          <div className="text-lg font-semibold text-green-400">
+          <div className="text-lg font-semibold text-[#2E7D32]">
             ${power.today_cost.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500">Cost today</div>
+          <div className="text-xs text-[#B1ADA1]">Cost today</div>
         </div>
         <div>
-          <div className="text-lg font-semibold text-green-400">
+          <div className="text-lg font-semibold text-[#2E7D32]">
             ${power.month_cost.toFixed(2)}
           </div>
-          <div className="text-xs text-gray-500">Cost this month</div>
+          <div className="text-xs text-[#B1ADA1]">Cost this month</div>
         </div>
       </div>
-      <div className="mt-2 text-xs text-gray-600">
+      <div className="mt-2 text-xs text-[#B1ADA1]">
         Rate: ${power.rate_per_kwh}/{power.currency} per kWh
       </div>
     </div>
@@ -283,23 +283,23 @@ function IntegrationTile({ integration }: { integration: Integration }) {
   const { name, configured, description, setupUrl, setupLabel } = integration;
   return (
     <div
-      className={`rounded-xl p-4 border ${configured ? "bg-gray-800 border-gray-700" : "bg-gray-800/50 border-dashed border-gray-700"}`}
+      className={`rounded-xl p-4 border ${configured ? "bg-white border-[#E5E1DB]" : "bg-[#F4F3EE] border-dashed border-[#D5D0C8]"}`}
     >
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium">{name}</span>
         {configured ? (
-          <span className="flex items-center gap-1.5 text-xs text-green-400">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-400" />
+          <span className="flex items-center gap-1.5 text-xs text-[#2E7D32]">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#2E7D32]" />
             Connected
           </span>
         ) : (
-          <span className="flex items-center gap-1.5 text-xs text-gray-500">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-gray-600" />
+          <span className="flex items-center gap-1.5 text-xs text-[#B1ADA1]">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#D5D0C8]" />
             Not configured
           </span>
         )}
       </div>
-      <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+      <p className="text-xs text-[#6F6B66] mb-3 leading-relaxed">
         {description}
       </p>
       {!configured && setupUrl && (
@@ -307,13 +307,13 @@ function IntegrationTile({ integration }: { integration: Integration }) {
           href={setupUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          className="inline-block text-xs text-[#C15F3C] hover:text-[#A84E30] transition-colors"
         >
           {setupLabel} &rarr;
         </a>
       )}
       {!configured && !setupUrl && (
-        <span className="text-xs text-gray-500">{setupLabel}</span>
+        <span className="text-xs text-[#B1ADA1]">{setupLabel}</span>
       )}
     </div>
   );
@@ -321,8 +321,8 @@ function IntegrationTile({ integration }: { integration: Integration }) {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-gray-800 rounded-xl p-4">
-      <div className="text-xs text-gray-400 mb-1">{label}</div>
+    <div className="bg-white rounded-xl p-4 border border-[#E5E1DB]">
+      <div className="text-xs text-[#6F6B66] mb-1">{label}</div>
       <div className="text-2xl font-bold">{value}</div>
     </div>
   );
@@ -367,11 +367,11 @@ function InviteSection({
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">
+      <h3 className="text-sm font-semibold text-[#6F6B66] mb-3">
         Invite Links
       </h3>
-      <div className="bg-gray-800 rounded-xl p-5 space-y-4">
-        <p className="text-xs text-gray-400">
+      <div className="bg-white rounded-xl p-5 space-y-4 border border-[#E5E1DB]">
+        <p className="text-xs text-[#6F6B66]">
           Generate one-time invite links for new users. They'll get auto-provisioned with an account and API key.
         </p>
 
@@ -397,7 +397,7 @@ function InviteSection({
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[500px]">
               <thead>
-                <tr className="border-b border-gray-700 text-gray-400 text-left">
+                <tr className="border-b border-[#E5E1DB] text-[#6F6B66] text-left">
                   <th className="py-2 font-medium">Name</th>
                   <th className="py-2 font-medium">Created</th>
                   <th className="py-2 font-medium">Status</th>
@@ -407,22 +407,22 @@ function InviteSection({
               </thead>
               <tbody>
                 {invites.map((inv) => (
-                  <tr key={inv.id} className="border-b border-gray-700/50">
+                  <tr key={inv.id} className="border-b border-[#EDEBE6]">
                     <td className="py-2">{inv.name || "-"}</td>
-                    <td className="py-2 text-gray-400">
+                    <td className="py-2 text-[#6F6B66]">
                       {new Date(inv.created_at).toLocaleDateString()}
                     </td>
                     <td className="py-2">
                       {inv.claimed_at ? (
-                        <span className="text-green-400 text-xs">Claimed</span>
+                        <span className="text-[#2E7D32] text-xs">Claimed</span>
                       ) : inv.expires_at &&
                         new Date(inv.expires_at) < new Date() ? (
-                        <span className="text-red-400 text-xs">Expired</span>
+                        <span className="text-[#C62828] text-xs">Expired</span>
                       ) : (
-                        <span className="text-yellow-400 text-xs">Pending</span>
+                        <span className="text-[#E65100] text-xs">Pending</span>
                       )}
                     </td>
-                    <td className="py-2 text-gray-400 text-xs">
+                    <td className="py-2 text-[#6F6B66] text-xs">
                       {inv.expires_at
                         ? new Date(inv.expires_at).toLocaleDateString()
                         : "-"}
@@ -434,7 +434,7 @@ function InviteSection({
                             onClick={() => copyInviteUrl(inv.token)}
                             variant="ghost"
                             size="sm"
-                            className="text-blue-400 hover:text-blue-300 text-xs h-auto py-1"
+                            className="text-[#C15F3C] hover:text-[#A84E30] text-xs h-auto py-1"
                           >
                             {copiedToken === inv.token ? "Copied!" : "Copy Link"}
                           </Button>
@@ -442,7 +442,7 @@ function InviteSection({
                             onClick={() => handleDelete(inv.id)}
                             variant="ghost"
                             size="sm"
-                            className="text-red-400 hover:text-red-300 text-xs h-auto py-1"
+                            className="text-[#C62828] hover:text-[#B71C1C] text-xs h-auto py-1"
                           >
                             Delete
                           </Button>
@@ -525,7 +525,7 @@ function UserRow({
   return (
     <>
       <tr
-        className="border-b border-gray-700/50 cursor-pointer hover:bg-gray-700/30"
+        className="border-b border-[#EDEBE6] cursor-pointer hover:bg-[#F4F3EE]"
         onClick={onToggle}
       >
         <td className="px-4 py-3">{user.email}</td>
@@ -533,19 +533,19 @@ function UserRow({
           <span
             className={`inline-flex items-center gap-1.5 text-xs capitalize ${
               user.status === "active"
-                ? "text-green-400"
+                ? "text-[#2E7D32]"
                 : user.status === "pending"
-                  ? "text-yellow-400"
-                  : "text-red-400"
+                  ? "text-[#E65100]"
+                  : "text-[#C62828]"
             }`}
           >
             <span
               className={`inline-block h-1.5 w-1.5 rounded-full ${
                 user.status === "active"
-                  ? "bg-green-400"
+                  ? "bg-[#2E7D32]"
                   : user.status === "pending"
-                    ? "bg-yellow-400"
-                    : "bg-red-400"
+                    ? "bg-[#E65100]"
+                    : "bg-[#C62828]"
               }`}
             />
             {user.status}
@@ -562,7 +562,7 @@ function UserRow({
               onClick={() => handleQuickAction("active")}
               variant="ghost"
               size="sm"
-              className="text-green-400 hover:text-green-300 text-xs h-auto py-1"
+              className="text-[#2E7D32] hover:text-[#1B5E20] text-xs h-auto py-1"
             >
               Approve
             </Button>
@@ -572,18 +572,18 @@ function UserRow({
               onClick={() => handleQuickAction("suspended")}
               variant="ghost"
               size="sm"
-              className="text-red-400 hover:text-red-300 text-xs h-auto py-1"
+              className="text-[#C62828] hover:text-[#B71C1C] text-xs h-auto py-1"
             >
               Suspend
             </Button>
           )}
-          {isSelf && <span className="text-xs text-gray-500">You</span>}
+          {isSelf && <span className="text-xs text-[#B1ADA1]">You</span>}
           {user.status === "suspended" && (
             <Button
               onClick={() => handleQuickAction("active")}
               variant="ghost"
               size="sm"
-              className="text-green-400 hover:text-green-300 text-xs h-auto py-1"
+              className="text-[#2E7D32] hover:text-[#1B5E20] text-xs h-auto py-1"
             >
               Reactivate
             </Button>
@@ -594,17 +594,17 @@ function UserRow({
         <tr>
           <td
             colSpan={5}
-            className="px-4 py-4 bg-gray-850 border-b border-gray-700"
+            className="px-4 py-4 bg-[#F4F3EE] border-b border-[#E5E1DB]"
           >
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">
+                <label className="block text-xs text-[#6F6B66] mb-1">
                   Status
                 </label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as typeof status)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[#EDEAE3] border border-[#E5E1DB] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-[#C15F3C]"
                 >
                   <option value="pending">Pending</option>
                   <option value="active">Active</option>
@@ -612,18 +612,18 @@ function UserRow({
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Role</label>
+                <label className="block text-xs text-[#6F6B66] mb-1">Role</label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as typeof role)}
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[#EDEAE3] border border-[#E5E1DB] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:border-[#C15F3C]"
                 >
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">
+                <label className="block text-xs text-[#6F6B66] mb-1">
                   Hard Limit ($)
                 </label>
                 <Input
@@ -633,7 +633,7 @@ function UserRow({
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">
+                <label className="block text-xs text-[#6F6B66] mb-1">
                   Services (comma-sep)
                 </label>
                 <Input
@@ -652,13 +652,13 @@ function UserRow({
               {saving ? "Saving..." : "Save Changes"}
             </Button>
 
-            <div className="mt-4 pt-4 border-t border-gray-700">
-              <div className="text-xs text-gray-400 mb-2">
+            <div className="mt-4 pt-4 border-t border-[#E5E1DB]">
+              <div className="text-xs text-[#6F6B66] mb-2">
                 Balance Adjustment
               </div>
               <div className="flex gap-2 items-end">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">
+                  <label className="block text-xs text-[#6F6B66] mb-1">
                     Amount ($)
                   </label>
                   <Input
@@ -670,7 +670,7 @@ function UserRow({
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">
+                  <label className="block text-xs text-[#6F6B66] mb-1">
                     Description
                   </label>
                   <Input

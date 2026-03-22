@@ -159,22 +159,22 @@ export function AccountPage() {
   }
 
   function balanceColor(b: number): string {
-    if (b > 20) return "text-green-400";
-    if (b > 10) return "text-yellow-400";
-    if (b > 0) return "text-orange-400";
-    return "text-red-400";
+    if (b > 20) return "text-[#2E7D32]";
+    if (b > 10) return "text-[#E65100]";
+    if (b > 0) return "text-[#EF6C00]";
+    return "text-[#C62828]";
   }
 
-  if (loading) return <div className="p-6 text-gray-500">Loading...</div>;
+  if (loading) return <div className="p-6 text-[#B1ADA1]">Loading...</div>;
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-5xl pb-20 md:pb-0 w-full">
       <h2 className="text-lg font-semibold">Account</h2>
 
-      {/* Balance Card — only when billing enabled */}
+      {/* Balance Card */}
       {billingEnabled && balance && (
-        <div className="bg-gray-800 rounded-xl p-4 md:p-6">
-          <div className="text-sm text-gray-400 mb-1">
+        <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
+          <div className="text-sm text-[#6F6B66] mb-1">
             {balance.billing_type === "postpaid" && balance.balance_nzd < 0
               ? "Current Debt"
               : balance.billing_type === "postpaid"
@@ -186,22 +186,22 @@ export function AccountPage() {
           >
             ${Math.abs(balance.balance_nzd).toFixed(2)}
           </div>
-          <div className="mt-3 text-sm text-gray-400 flex flex-wrap gap-x-4 gap-y-1">
+          <div className="mt-3 text-sm text-[#6F6B66] flex flex-wrap gap-x-4 gap-y-1">
             <span>
               This month:{" "}
-              <span className="text-white">
+              <span className="text-[#2D2B28]">
                 ${balance.this_month_usage_nzd.toFixed(2)}
               </span>
             </span>
             <span>
               Limit:{" "}
-              <span className="text-white">
+              <span className="text-[#2D2B28]">
                 ${balance.hard_limit_nzd.toFixed(2)}
               </span>
             </span>
             <span>
               Type:{" "}
-              <span className="text-white capitalize">
+              <span className="text-[#2D2B28] capitalize">
                 {balance.billing_type}
               </span>
             </span>
@@ -209,7 +209,7 @@ export function AccountPage() {
 
           {balance.billing_type === "prepaid" && (
             <div className="flex flex-wrap items-center gap-2 mt-4">
-              <span className="text-sm text-gray-400">$</span>
+              <span className="text-sm text-[#6F6B66]">$</span>
               <Input
                 type="number"
                 value={topUpAmount}
@@ -232,27 +232,27 @@ export function AccountPage() {
 
       {/* Billing Information for Postpaid Users */}
       {billingEnabled && balance?.billing_type === "postpaid" && (
-        <div className="bg-gray-800 rounded-xl p-4 md:p-6">
+        <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
           <h3 className="font-medium mb-3">Billing & Payments</h3>
 
           <div className="space-y-4">
             <div>
-              <h4 className="text-sm font-medium text-gray-300 mb-2">
+              <h4 className="text-sm font-medium text-[#2D2B28] mb-2">
                 Invoice Schedule
               </h4>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-[#6F6B66]">
                 Invoices are automatically generated on the{" "}
-                <strong className="text-white">1st of each month</strong> for
+                <strong className="text-[#2D2B28]">1st of each month</strong> for
                 the previous month's usage. You'll receive an email with your
                 invoice and payment instructions.
               </p>
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-gray-300 mb-2">
+              <h4 className="text-sm font-medium text-[#2D2B28] mb-2">
                 Payment Methods
               </h4>
-              <p className="text-sm text-gray-400 mb-3">
+              <p className="text-sm text-[#6F6B66] mb-3">
                 You can pay invoices manually via the emailed link, or set up
                 automatic payments by adding a payment method below.
               </p>
@@ -262,11 +262,11 @@ export function AccountPage() {
                   {paymentMethods.map((pm) => (
                     <div
                       key={pm.id}
-                      className="flex items-center justify-between p-3 bg-gray-900/50 border border-gray-700 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-[#F4F3EE] border border-[#E5E1DB] rounded-lg"
                     >
                       <div className="flex items-center gap-3">
                         <svg
-                          className="w-4 h-4 text-green-400"
+                          className="w-4 h-4 text-[#2E7D32]"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -279,10 +279,10 @@ export function AccountPage() {
                           />
                         </svg>
                         <div className="text-sm">
-                          <div className="text-gray-300 capitalize">
+                          <div className="text-[#2D2B28] capitalize">
                             {pm.card_brand} •••• {pm.card_last4}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-[#B1ADA1]">
                             Expires {pm.card_exp_month}/{pm.card_exp_year}
                           </div>
                         </div>
@@ -303,7 +303,7 @@ export function AccountPage() {
                         }}
                         variant="ghost"
                         size="sm"
-                        className="text-red-400 hover:text-red-300"
+                        className="text-[#C62828] hover:text-[#B71C1C]"
                       >
                         Remove
                       </Button>
@@ -334,10 +334,10 @@ export function AccountPage() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-gray-700">
-              <p className="text-xs text-gray-500">
+            <div className="pt-3 border-t border-[#E5E1DB]">
+              <p className="text-xs text-[#B1ADA1]">
                 Next invoice:{" "}
-                <strong className="text-gray-400">1st of next month</strong> •
+                <strong className="text-[#6F6B66]">1st of next month</strong> •
                 Covers usage from start to end of current month
               </p>
             </div>
@@ -345,17 +345,17 @@ export function AccountPage() {
         </div>
       )}
 
-      {/* Usage Limit — user can set their own */}
+      {/* Usage Limit */}
       {billingEnabled && user && (
-        <div className="bg-gray-800 rounded-xl p-4 md:p-6">
+        <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
           <h3 className="font-medium mb-2">Usage Limit</h3>
-          <p className="text-sm text-gray-400 mb-3">
+          <p className="text-sm text-[#6F6B66] mb-3">
             {balance?.billing_type === "postpaid"
               ? "Maximum debt allowed before service is suspended. Set as a negative number (e.g., -20 for $20 debt limit)."
               : "Minimum balance required to continue service. You'll be blocked when your balance drops below this amount."}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-gray-400">$</span>
+            <span className="text-sm text-[#6F6B66]">$</span>
             <Input
               type="number"
               value={limitInput}
@@ -378,35 +378,35 @@ export function AccountPage() {
 
       {/* User Info */}
       {user && (
-        <div className="bg-gray-800 rounded-xl p-4 md:p-6">
+        <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
           <h3 className="font-medium mb-3">Profile</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-            <span className="text-gray-400">Email</span>
+            <span className="text-[#6F6B66]">Email</span>
             <span>{user.email}</span>
-            <span className="text-gray-400">Name</span>
+            <span className="text-[#6F6B66]">Name</span>
             <span>{user.name || "-"}</span>
-            <span className="text-gray-400">Status</span>
+            <span className="text-[#6F6B66]">Status</span>
             <span className="capitalize">{user.status}</span>
-            <span className="text-gray-400">Role</span>
+            <span className="text-[#6F6B66]">Role</span>
             <span className="capitalize">{user.role}</span>
-            <span className="text-gray-400">Services</span>
+            <span className="text-[#6F6B66]">Services</span>
             <span>{user.services_enabled.join(", ") || "None"}</span>
-            <span className="text-gray-400">Member since</span>
+            <span className="text-[#6F6B66]">Member since</span>
             <span>{new Date(user.created_at).toLocaleDateString()}</span>
           </div>
         </div>
       )}
 
       {/* API Keys */}
-      <div className="bg-gray-800 rounded-xl p-4 md:p-6 space-y-4">
+      <div className="bg-white rounded-xl p-4 md:p-6 space-y-4 border border-[#E5E1DB]">
         <h3 className="font-medium">API Keys</h3>
 
         {revealedKey && (
-          <div className="bg-green-900/30 border border-green-700 rounded-lg p-3">
-            <div className="text-xs text-green-300 mb-1">
+          <div className="bg-[#E8F5E9] border border-[#C8E6C9] rounded-lg p-3">
+            <div className="text-xs text-[#2E7D32] mb-1">
               Copy this key now - it won't be shown again:
             </div>
-            <code className="text-sm text-green-200 break-all block">
+            <code className="text-sm text-[#1B5E20] break-all block">
               {revealedKey}
             </code>
             <Button
@@ -416,7 +416,7 @@ export function AccountPage() {
               }}
               variant="ghost"
               size="sm"
-              className="mt-2 text-xs text-green-400 hover:text-green-300"
+              className="mt-2 text-xs text-[#2E7D32] hover:text-[#1B5E20]"
             >
               Copy to clipboard
             </Button>
@@ -424,7 +424,7 @@ export function AccountPage() {
             {/* Integration Panels */}
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Claude Code Integration */}
-              <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-3">
+              <div className="bg-white border border-[#E5E1DB] rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <img
                     src="/claude-logo.svg"
@@ -433,7 +433,7 @@ export function AccountPage() {
                   />
                   <span className="text-sm font-medium">Claude Code</span>
                 </div>
-                <p className="text-xs text-gray-400 mb-2">
+                <p className="text-xs text-[#6F6B66] mb-2">
                   Configure Claude Code to use GPUShare as LLM gateway
                 </p>
                 <div className="space-y-2">
@@ -457,7 +457,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                     href="https://code.claude.com/docs/en/llm-gateway"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block text-center text-xs text-blue-400 hover:text-blue-300"
+                    className="block text-center text-xs text-[#C15F3C] hover:text-[#A84E30]"
                   >
                     View Setup Guide →
                   </a>
@@ -465,7 +465,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
               </div>
 
               {/* OpenClaw Integration */}
-              <div className="bg-gray-900/50 border border-gray-700 rounded-lg p-3">
+              <div className="bg-white border border-[#E5E1DB] rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <img
                     src="/openclaw-dark.svg"
@@ -474,7 +474,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                   />
                   <span className="text-sm font-medium">OpenClaw</span>
                 </div>
-                <p className="text-xs text-gray-400 mb-2">
+                <p className="text-xs text-[#6F6B66] mb-2">
                   Add GPUShare as custom provider
                 </p>
                 <div className="space-y-2">
@@ -524,7 +524,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                     href="https://docs.openclaw.ai/concepts/model-providers"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block text-center text-xs text-blue-400 hover:text-blue-300"
+                    className="block text-center text-xs text-[#C15F3C] hover:text-[#A84E30]"
                   >
                     View Setup Guide →
                   </a>
@@ -555,7 +555,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[500px]">
               <thead>
-                <tr className="border-b border-gray-700 text-gray-400 text-left">
+                <tr className="border-b border-[#E5E1DB] text-[#6F6B66] text-left">
                   <th className="py-2 font-medium">Label</th>
                   <th className="py-2 font-medium">Created</th>
                   <th className="py-2 font-medium">Last Used</th>
@@ -565,21 +565,21 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
               </thead>
               <tbody>
                 {apiKeys.map((k) => (
-                  <tr key={k.id} className="border-b border-gray-700/50">
+                  <tr key={k.id} className="border-b border-[#EDEBE6]">
                     <td className="py-2">{k.label || "-"}</td>
-                    <td className="py-2 text-gray-400">
+                    <td className="py-2 text-[#6F6B66]">
                       {new Date(k.created_at).toLocaleDateString()}
                     </td>
-                    <td className="py-2 text-gray-400">
+                    <td className="py-2 text-[#6F6B66]">
                       {k.last_used
                         ? new Date(k.last_used).toLocaleDateString()
                         : "Never"}
                     </td>
                     <td className="py-2">
                       {k.revoked_at ? (
-                        <span className="text-red-400">Revoked</span>
+                        <span className="text-[#C62828]">Revoked</span>
                       ) : (
-                        <span className="text-green-400">Active</span>
+                        <span className="text-[#2E7D32]">Active</span>
                       )}
                     </td>
                     <td className="py-2">
@@ -588,7 +588,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                           onClick={() => handleRevokeKey(k.id)}
                           variant="ghost"
                           size="sm"
-                          className="text-red-400 hover:text-red-300 text-xs h-auto py-1"
+                          className="text-[#C62828] hover:text-[#B71C1C] text-xs h-auto py-1"
                         >
                           Revoke
                         </Button>
@@ -600,19 +600,19 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
             </table>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">No API keys</p>
+          <p className="text-sm text-[#B1ADA1]">No API keys</p>
         )}
       </div>
 
       {/* Usage Log */}
-      <div className="bg-gray-800 rounded-xl p-4 md:p-6 space-y-4">
+      <div className="bg-white rounded-xl p-4 md:p-6 space-y-4 border border-[#E5E1DB]">
         <h3 className="font-medium">Usage Log</h3>
         {usage.length > 0 ? (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[600px]">
                 <thead>
-                  <tr className="border-b border-gray-700 text-gray-400 text-left">
+                  <tr className="border-b border-[#E5E1DB] text-[#6F6B66] text-left">
                     <th className="py-2 font-medium">Model</th>
                     <th className="py-2 font-medium">In Tokens</th>
                     <th className="py-2 font-medium">Out Tokens</th>
@@ -625,19 +625,19 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                 </thead>
                 <tbody>
                   {usage.map((u) => (
-                    <tr key={u.id} className="border-b border-gray-700/50">
+                    <tr key={u.id} className="border-b border-[#EDEBE6]">
                       <td className="py-2">{u.model}</td>
-                      <td className="py-2 text-gray-400">
+                      <td className="py-2 text-[#6F6B66]">
                         {u.input_tokens.toLocaleString()}
                       </td>
-                      <td className="py-2 text-gray-400">
+                      <td className="py-2 text-[#6F6B66]">
                         {u.output_tokens.toLocaleString()}
                       </td>
                       {billingEnabled && (
                         <td className="py-2">${u.cost_nzd.toFixed(4)}</td>
                       )}
-                      <td className="py-2 text-gray-400">{u.kwh.toFixed(4)}</td>
-                      <td className="py-2 text-gray-400">
+                      <td className="py-2 text-[#6F6B66]">{u.kwh.toFixed(4)}</td>
+                      <td className="py-2 text-[#6F6B66]">
                         {new Date(u.created_at).toLocaleString()}
                       </td>
                     </tr>
@@ -654,7 +654,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
               >
                 ← Previous
               </Button>
-              <span className="text-gray-500">
+              <span className="text-[#B1ADA1]">
                 Showing {usageOffset + 1}-{usageOffset + usage.length}
               </span>
               <Button
@@ -668,19 +668,19 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
             </div>
           </>
         ) : (
-          <p className="text-sm text-gray-500">No usage records</p>
+          <p className="text-sm text-[#B1ADA1]">No usage records</p>
         )}
       </div>
 
-      {/* Invoices — only when billing enabled */}
+      {/* Invoices */}
       {billingEnabled && (
-        <div className="bg-gray-800 rounded-xl p-4 md:p-6 space-y-4">
+        <div className="bg-white rounded-xl p-4 md:p-6 space-y-4 border border-[#E5E1DB]">
           <h3 className="font-medium">Invoices</h3>
           {invoices.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[500px]">
                 <thead>
-                  <tr className="border-b border-gray-700 text-gray-400 text-left">
+                  <tr className="border-b border-[#E5E1DB] text-[#6F6B66] text-left">
                     <th className="py-2 font-medium">Period</th>
                     <th className="py-2 font-medium">Amount</th>
                     <th className="py-2 font-medium">Status</th>
@@ -689,14 +689,14 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                 </thead>
                 <tbody>
                   {invoices.map((inv) => (
-                    <tr key={inv.id} className="border-b border-gray-700/50">
+                    <tr key={inv.id} className="border-b border-[#EDEBE6]">
                       <td className="py-2">
                         {new Date(inv.period_start).toLocaleDateString()} -{" "}
                         {new Date(inv.period_end).toLocaleDateString()}
                       </td>
                       <td className="py-2">${inv.amount_nzd.toFixed(2)}</td>
                       <td className="py-2 capitalize">{inv.status}</td>
-                      <td className="py-2 text-gray-400">
+                      <td className="py-2 text-[#6F6B66]">
                         {inv.paid_at
                           ? new Date(inv.paid_at).toLocaleDateString()
                           : "-"}
@@ -707,7 +707,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
               </table>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No invoices</p>
+            <p className="text-sm text-[#B1ADA1]">No invoices</p>
           )}
         </div>
       )}
@@ -719,7 +719,6 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
           onSuccess={async () => {
             setSetupClientSecret(null);
             trigger("success");
-            // Reload payment methods
             const pm = await billing.listPaymentMethods();
             setPaymentMethods(pm);
           }}

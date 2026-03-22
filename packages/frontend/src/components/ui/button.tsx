@@ -21,14 +21,14 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
 
     const baseStyles =
-      "inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
+      "inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#F4F3EE] disabled:opacity-50 disabled:pointer-events-none";
 
     const variantStyles = {
-      primary: "text-white hover:opacity-90 focus:ring-2 focus:ring-offset-2",
-      secondary: "bg-gray-700 text-white hover:bg-gray-600 focus:ring-gray-500",
-      success: "text-white hover:opacity-90 focus:ring-2 focus:ring-offset-2",
-      error: "text-white hover:opacity-90 focus:ring-2 focus:ring-offset-2",
-      ghost: "text-gray-400 hover:text-white hover:bg-gray-800/50",
+      primary: "text-white hover:opacity-90 focus:ring-[#C15F3C]",
+      secondary: "bg-[#EDEAE3] text-[#2D2B28] hover:bg-[#E5E1DB] focus:ring-[#C15F3C]",
+      success: "text-white hover:opacity-90 focus:ring-[#2E7D32]",
+      error: "text-white hover:opacity-90 focus:ring-[#C62828]",
+      ghost: "text-[#6F6B66] hover:text-[#2D2B28] hover:bg-[#EDEAE3]",
     };
 
     const variantInlineStyles: Record<string, React.CSSProperties> = {

@@ -8,7 +8,6 @@ import {
 } from "@stripe/react-stripe-js";
 import { Button } from "./ui";
 
-// Initialize Stripe - you'll need to set VITE_STRIPE_PUBLISHABLE_KEY
 const stripePromise = loadStripe(
   import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || ""
 );
@@ -62,12 +61,12 @@ function PaymentMethodSetupForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="bg-gray-900 p-4 rounded-lg">
+      <div className="bg-[#F4F3EE] p-4 rounded-lg">
         <PaymentElement />
       </div>
 
       {error && (
-        <div className="text-sm text-red-400 bg-red-900/20 border border-red-700 rounded-lg p-3">
+        <div className="text-sm text-[#C62828] bg-[#FFEBEE] border border-[#FFCDD2] rounded-lg p-3">
           {error}
         </div>
       )}
@@ -103,12 +102,12 @@ export function PaymentMethodSetup({
   const options = {
     clientSecret,
     appearance: {
-      theme: "night" as const,
+      theme: "flat" as const,
       variables: {
-        colorPrimary: "#3b82f6",
-        colorBackground: "#111827",
-        colorText: "#f3f4f6",
-        colorDanger: "#ef4444",
+        colorPrimary: "#C15F3C",
+        colorBackground: "#F4F3EE",
+        colorText: "#2D2B28",
+        colorDanger: "#C62828",
         fontFamily: "system-ui, sans-serif",
         borderRadius: "0.5rem",
       },
@@ -116,10 +115,10 @@ export function PaymentMethodSetup({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-gray-800 rounded-xl p-6 max-w-md w-full border border-gray-700">
-        <h3 className="text-lg font-semibold mb-4">Add Payment Method</h3>
-        <p className="text-sm text-gray-400 mb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+      <div className="bg-white rounded-xl p-6 max-w-md w-full border border-[#E5E1DB] shadow-lg">
+        <h3 className="text-lg font-semibold mb-4 text-[#2D2B28]">Add Payment Method</h3>
+        <p className="text-sm text-[#6F6B66] mb-4">
           Your payment method will be securely saved for automatic invoice
           payments.
         </p>

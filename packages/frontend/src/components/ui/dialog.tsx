@@ -12,7 +12,7 @@ export const DialogOverlay = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    className={`fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 ${className}`}
+    className={`fixed inset-0 z-50 bg-black/30 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 ${className}`}
     {...props}
   />
 ));
@@ -26,7 +26,7 @@ export const DialogContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      className={`fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border border-gray-700 bg-gray-800 p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-xl ${className}`}
+      className={`fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border border-[#E5E1DB] bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-xl ${className}`}
       {...props}
     >
       {children}
@@ -63,7 +63,7 @@ export const DialogTitle = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={`text-lg font-semibold leading-none tracking-tight text-white ${className}`}
+    className={`text-lg font-semibold leading-none tracking-tight text-[#2D2B28] ${className}`}
     {...props}
   />
 ));
@@ -75,7 +75,7 @@ export const DialogDescription = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={`text-sm text-gray-400 ${className}`}
+    className={`text-sm text-[#6F6B66] ${className}`}
     {...props}
   />
 ));

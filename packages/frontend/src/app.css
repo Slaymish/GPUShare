@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+:root {
+  --color-primary: #C15F3C;
+  --color-primary-hover: #A84E30;
+  --color-success: #2E7D32;
+  --color-error: #C62828;
+  --color-bg: #F4F3EE;
+  --color-surface: #FFFFFF;
+  --color-border: #E5E1DB;
+  --color-text: #2D2B28;
+  --color-text-secondary: #6F6B66;
+  --color-text-muted: #B1ADA1;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -8,6 +21,8 @@ html,
 body {
   overflow-x: hidden;
   max-width: 100vw;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
 #root {

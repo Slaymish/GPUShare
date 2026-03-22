@@ -17,7 +17,7 @@ export const SelectTrigger = React.forwardRef<
 >(({ className = '', children, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
-    className={`flex items-center justify-between w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+    className={`flex items-center justify-between w-full bg-[#EDEAE3] border border-[#E5E1DB] rounded-lg px-3 py-2 text-sm text-[#2D2B28] placeholder:text-[#B1ADA1] focus:outline-none focus:border-[#C15F3C] focus:ring-1 focus:ring-[#C15F3C] disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     {...props}
   >
     {children}
@@ -39,7 +39,7 @@ export const SelectContent = React.forwardRef<
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
-      className={`relative z-50 min-w-[8rem] overflow-hidden rounded-lg border border-gray-700 bg-gray-800 text-white shadow-lg animate-in fade-in-80 ${
+      className={`relative z-50 min-w-[8rem] overflow-hidden rounded-lg border border-[#E5E1DB] bg-white text-[#2D2B28] shadow-lg animate-in fade-in-80 ${
         position === 'popper' ? 'translate-y-1' : ''
       } ${className}`}
       position={position}
@@ -65,7 +65,7 @@ export const SelectItem = React.forwardRef<
 >(({ className = '', children, ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
-    className={`relative flex w-full cursor-pointer select-none items-center rounded-md py-1.5 px-2 text-sm outline-none focus:bg-gray-700 focus:text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ${className}`}
+    className={`relative flex w-full cursor-pointer select-none items-center rounded-md py-1.5 px-2 text-sm outline-none focus:bg-[#F4F3EE] focus:text-[#2D2B28] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ${className}`}
     {...props}
   >
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

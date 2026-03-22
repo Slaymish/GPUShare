@@ -60,7 +60,7 @@ function StatusPill({ status }: { status: ServerStatus }) {
   const config = statusConfig[status];
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-800/50 text-xs">
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F4F3EE] text-xs">
       <span className="relative flex h-2 w-2">
         {config.pulse && (
           <span
@@ -73,7 +73,7 @@ function StatusPill({ status }: { status: ServerStatus }) {
           style={{ backgroundColor: config.color }}
         />
       </span>
-      <span className="text-gray-300">{config.label}</span>
+      <span className="text-[#6F6B66]">{config.label}</span>
     </div>
   );
 }
@@ -218,7 +218,7 @@ export function Layout() {
 
   if (isLoginPage || !authed) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white">
+      <div className="min-h-screen bg-[#F4F3EE] text-[#2D2B28]">
         <Outlet />
       </div>
     );
@@ -240,10 +240,10 @@ export function Layout() {
   const currentPath = routerState.location.pathname;
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white overflow-hidden max-w-full">
+    <div className="flex h-screen bg-[#F4F3EE] text-[#2D2B28] overflow-hidden max-w-full">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-gray-950 flex-col border-r border-gray-800 fixed left-0 top-0 bottom-0">
-        <div className="p-6 border-b border-gray-800">
+      <aside className="hidden md:flex w-64 bg-white flex-col border-r border-[#E5E1DB] fixed left-0 top-0 bottom-0">
+        <div className="p-6 border-b border-[#E5E1DB]">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold tracking-tight">
               {branding.appName}
@@ -257,10 +257,10 @@ export function Layout() {
               key={item.to}
               to={item.to}
               className="block px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-              activeProps={{ className: "bg-gray-800 text-white" }}
+              activeProps={{ className: "bg-[#F4F3EE] text-[#2D2B28]" }}
               inactiveProps={{
                 className:
-                  "text-gray-400 hover:text-white hover:bg-gray-800/50",
+                  "text-[#6F6B66] hover:text-[#2D2B28] hover:bg-[#F4F3EE]",
               }}
               onMouseDown={() => trigger("nudge")}
             >
@@ -268,21 +268,21 @@ export function Layout() {
             </Link>
           ))}
         </nav>
-        <div className="p-4 border-t border-gray-800 space-y-2">
+        <div className="p-4 border-t border-[#E5E1DB] space-y-2">
           {billingEnabled && balance !== null && (
             <div className="text-sm">
-              <span className="text-gray-400">
+              <span className="text-[#6F6B66]">
                 {balance < 0 ? "Debt: " : "Balance: "}
               </span>
               <span
                 className={
                   balance > balanceThresholds.high
-                    ? "text-green-400"
+                    ? "text-[#2E7D32]"
                     : balance > balanceThresholds.medium
-                      ? "text-yellow-400"
+                      ? "text-[#E65100]"
                       : balance > balanceThresholds.low
-                        ? "text-orange-400"
-                        : "text-red-400"
+                        ? "text-[#EF6C00]"
+                        : "text-[#C62828]"
                 }
               >
                 ${Math.abs(balance).toFixed(2)}
@@ -290,7 +290,7 @@ export function Layout() {
             </div>
           )}
           {email && (
-            <div className="text-xs text-gray-500 truncate">{email}</div>
+            <div className="text-xs text-[#B1ADA1] truncate">{email}</div>
           )}
           <Button
             onClick={handleLogout}
@@ -304,7 +304,7 @@ export function Layout() {
       </aside>
 
       {/* Mobile Top Bar */}
-      <div className="fixed top-0 left-0 right-0 z-40 md:hidden bg-gray-950 border-b border-gray-800">
+      <div className="fixed top-0 left-0 right-0 z-40 md:hidden bg-white border-b border-[#E5E1DB]">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <button
@@ -312,7 +312,7 @@ export function Layout() {
                 trigger("nudge");
                 setSidebarOpen(true);
               }}
-              className="text-gray-400 hover:text-white flex-shrink-0"
+              className="text-[#6F6B66] hover:text-[#2D2B28] flex-shrink-0"
             >
               <MenuIcon className="w-5 h-5" />
             </button>
@@ -330,11 +330,11 @@ export function Layout() {
       {sidebarOpen && (
         <>
           <div
-            className="fixed inset-0 z-50 bg-black/60 md:hidden"
+            className="fixed inset-0 z-50 bg-black/30 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] bg-gray-950 flex flex-col md:hidden">
-            <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+          <div className="fixed inset-y-0 left-0 z-50 w-72 max-w-[80vw] bg-white flex flex-col md:hidden">
+            <div className="p-4 border-b border-[#E5E1DB] flex items-center justify-between">
               <h1 className="text-lg font-bold tracking-tight">
                 {branding.appName}
               </h1>
@@ -343,7 +343,7 @@ export function Layout() {
                   trigger("nudge");
                   setSidebarOpen(false);
                 }}
-                className="text-gray-400 hover:text-white"
+                className="text-[#6F6B66] hover:text-[#2D2B28]"
               >
                 <CloseIcon className="w-5 h-5" />
               </button>
@@ -351,18 +351,18 @@ export function Layout() {
             <div className="p-4 space-y-3">
               {billingEnabled && balance !== null && (
                 <div className="text-sm">
-                  <span className="text-gray-400">
+                  <span className="text-[#6F6B66]">
                     {balance < 0 ? "Debt: " : "Balance: "}
                   </span>
                   <span
                     className={
                       balance > 10
-                        ? "text-green-400"
+                        ? "text-[#2E7D32]"
                         : balance > 5
-                          ? "text-yellow-400"
+                          ? "text-[#E65100]"
                           : balance > 0
-                            ? "text-orange-400"
-                            : "text-red-400"
+                            ? "text-[#EF6C00]"
+                            : "text-[#C62828]"
                     }
                   >
                     ${Math.abs(balance).toFixed(2)}
@@ -370,13 +370,13 @@ export function Layout() {
                 </div>
               )}
               {email && (
-                <div className="text-sm text-gray-400 truncate">{email}</div>
+                <div className="text-sm text-[#6F6B66] truncate">{email}</div>
               )}
               <Button
                 onClick={handleLogout}
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start text-red-400 hover:text-red-300"
+                className="w-full justify-start text-[#C62828] hover:text-[#B71C1C]"
               >
                 Logout
               </Button>
@@ -392,7 +392,7 @@ export function Layout() {
 
       {/* Mobile Bottom Tab Bar */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-gray-950 border-t border-gray-800 max-w-full"
+        className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-[#E5E1DB] max-w-full"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex">
@@ -404,7 +404,7 @@ export function Layout() {
                 key={item.to}
                 to={item.to}
                 className={`flex-1 flex flex-col items-center gap-1 py-2 text-xs font-medium transition-colors ${
-                  isActive ? "text-blue-400" : "text-gray-500"
+                  isActive ? "text-[#C15F3C]" : "text-[#B1ADA1]"
                 }`}
                 onMouseDown={() => trigger("nudge")}
               >

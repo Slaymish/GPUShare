@@ -35,30 +35,30 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4 pb-20 md:pb-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#F4F3EE] p-4 pb-20 md:pb-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">{branding.appName}</h1>
-          <p className="text-gray-400 mt-2">{branding.tagline}</p>
+          <h1 className="text-3xl font-bold text-[#2D2B28]">{branding.appName}</h1>
+          <p className="text-[#B1ADA1] mt-2">{branding.tagline}</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-gray-800 rounded-xl p-6 space-y-4"
+          className="bg-white rounded-xl p-6 space-y-4 border border-[#E5E1DB] shadow-sm"
         >
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-lg font-semibold text-[#2D2B28]">
             {isSignup ? "Create Account" : "Sign In"}
           </h2>
 
           {error && (
-            <div className="bg-red-900/50 border border-red-700 text-red-200 text-sm rounded-lg p-3">
+            <div className="bg-[#FFEBEE] border border-[#FFCDD2] text-[#C62828] text-sm rounded-lg p-3">
               {error}
             </div>
           )}
 
           {isSignup && (
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Name</label>
+              <label className="block text-sm text-[#6F6B66] mb-1">Name</label>
               <Input
                 type="text"
                 value={name}
@@ -68,7 +68,7 @@ export function LoginPage() {
           )}
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Email</label>
+            <label className="block text-sm text-[#6F6B66] mb-1">Email</label>
             <Input
               type="email"
               value={email}
@@ -78,7 +78,7 @@ export function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Password</label>
+            <label className="block text-sm text-[#6F6B66] mb-1">Password</label>
             <Input
               type="password"
               value={password}
@@ -107,13 +107,13 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm text-[#B1ADA1] mt-6">
           Want to create your own instance?{" "}
           <a
             href="https://github.com/Slaymish/GPUShare/blob/main/docs/SETUP.md"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline"
+            className="text-[#C15F3C] hover:text-[#A84E30] underline"
           >
             See the setup guide
           </a>
