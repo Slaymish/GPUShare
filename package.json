@@ -5,10 +5,10 @@
   "description": "GPU compute sharing platform — AI inference and 3D rendering at electricity cost",
   "scripts": {
     "dev": "pnpm run --parallel dev:frontend dev:server",
-    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:frontend": "pnpm --filter gpushare-frontend dev",
     "dev:server": "docker compose up",
-    "build": "pnpm --filter frontend build",
-    "build:frontend": "pnpm --filter frontend build",
+    "build": "pnpm --filter gpushare-frontend build",
+    "build:frontend": "pnpm --filter gpushare-frontend build",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
@@ -23,10 +23,10 @@
     "swagger": "open http://localhost:8000/docs",
     "redoc": "open http://localhost:8000/redoc",
     "openapi": "curl http://localhost:8000/openapi.json > openapi.json && echo 'OpenAPI spec saved to openapi.json'",
-    "test:frontend": "pnpm --filter frontend test",
-    "lint:frontend": "pnpm --filter frontend lint",
-    "format": "pnpm --filter frontend format",
-    "clean": "pnpm --filter frontend clean && docker compose down -v",
+    "test:frontend": "pnpm --filter gpushare-frontend test",
+    "lint:frontend": "pnpm --filter gpushare-frontend lint",
+    "format": "pnpm --filter gpushare-frontend format",
+    "clean": "pnpm --filter gpushare-frontend clean && docker compose down -v",
     "install:all": "pnpm install && pnpm --filter frontend install"
   },
   "workspaces": [
