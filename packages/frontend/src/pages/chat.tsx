@@ -18,6 +18,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { isGuest } from "../lib/auth";
+import { ModelPickerModal } from "../components/ModelPickerModal";
 
 interface Attachment {
   name: string;
@@ -133,6 +134,7 @@ export function ChatPage() {
   const [billingEnabled, setBillingEnabled] = useState(false);
   const [skillCatalog, setSkillCatalog] = useState<SkillSummary[]>([]);
   const [showSkillPicker, setShowSkillPicker] = useState(false);
+  const [showModelPicker, setShowModelPicker] = useState(false);
   const [skillFilter, setSkillFilter] = useState("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [lastElapsedSeconds, setLastElapsedSeconds] = useState<number | null>(
@@ -794,25 +796,38 @@ export function ChatPage() {
           <h2 className="text-lg font-semibold hidden md:block">
             {activeChat ? activeChat.title : "Chat"}
           </h2>
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="max-w-full">
-              <div className="flex items-center gap-2">
-                <SelectValue />
-              </div>
-            </SelectTrigger>
-            <SelectContent>
-              {models.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  <span className="flex items-center gap-2">
-                    {m.id}
-                    {getModelBadge(m)}
-                    {getColdStartBadge(m)}
-                    {m.vision_support && getVisionIcon()}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 min-w-0">
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="max-w-full">
+                <div className="flex items-center gap-2">
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    <span className="flex items-center gap-2">
+                      {m.id}
+                      {getModelBadge(m)}
+                      {getColdStartBadge(m)}
+                      {m.vision_support && getVisionIcon()}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              onClick={() => setShowModelPicker(true)}
+              className="text-[#6F6B66] hover:text-[#2D2B28] transition-colors shrink-0"
+              title="Help me choose a model"
+            >
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                <circle cx="12" cy="12" r="10" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <circle cx="12" cy="17" r=".5" fill="currentColor" />
+              </svg>
+            </button>
+          </div>
           {(() => {
             const m = models.find((m) => m.id === selectedModel);
             if (!m) return null;
@@ -1116,6 +1131,15 @@ export function ChatPage() {
           </div>
         </div>
       </div>
+      <ModelPickerModal
+        open={showModelPicker}
+        onClose={() => setShowModelPicker(false)}
+        onSelect={(id) => {
+          setSelectedModel(id);
+          setShowModelPicker(false);
+        }}
+        availableModelIds={models.map((m) => m.id)}
+      />
     </div>
   );
 }
