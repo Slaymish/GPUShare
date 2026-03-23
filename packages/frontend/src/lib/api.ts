@@ -92,11 +92,18 @@ async function request<T>(
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error(
+      "Cannot connect to server. The server may be offline — please try again later.",
+    );
+  }
 
   if (!res.ok) {
     const text = await res.text();
@@ -134,11 +141,18 @@ async function requestFormData<T>(
   const token = getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: formData,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method,
+      headers,
+      body: formData,
+    });
+  } catch {
+    throw new Error(
+      "Cannot connect to server. The server may be offline — please try again later.",
+    );
+  }
 
   if (!res.ok) {
     const text = await res.text();
