@@ -10,7 +10,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import get_settings
-from app.routers import admin, auth, billing, inference, invite, openai_compat, render, skills, status
+from app.routers import admin, auth, billing, inference, invite, model_picker, openai_compat, render, skills, status
 
 
 @asynccontextmanager
@@ -66,6 +66,7 @@ app.include_router(billing.webhook_router)
 app.include_router(admin.router)
 app.include_router(invite.router)
 app.include_router(skills.router)
+app.include_router(model_picker.router)
 
 
 @app.get("/health")

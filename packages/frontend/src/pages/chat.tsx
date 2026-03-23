@@ -19,6 +19,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { isGuest } from "../lib/auth";
 import { ModelPickerModal } from "../components/ModelPickerModal";
+import type { PickedModelMeta } from "../components/ModelPickerModal";
 
 interface Attachment {
   name: string;
@@ -1134,8 +1135,24 @@ export function ChatPage() {
       <ModelPickerModal
         open={showModelPicker}
         onClose={() => setShowModelPicker(false)}
-        onSelect={(id) => {
+        onSelect={(id, meta: PickedModelMeta) => {
           setSelectedModel(id);
+          // If the chosen model isn't in the loaded list (e.g. not in OPENROUTER_MODELS),
+          // inject a synthetic entry so it appears in the Select and can be inferred against.
+          setModels((prev) => {
+            if (prev.find((m) => m.id === id)) return prev;
+            return [
+              ...prev,
+              {
+                id,
+                object: "model",
+                owned_by: meta.ownedBy,
+                cost_per_million_tokens: meta.costPerMillionTokens,
+                loaded: false,
+                vision_support: meta.visionSupport,
+              },
+            ];
+          });
           setShowModelPicker(false);
         }}
         availableModelIds={models.map((m) => m.id)}

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_MODELS: str = ""  # comma-separated, e.g. "openai/gpt-4o,anthropic/claude-sonnet-4"
+    ARTIFICIAL_ANALYSIS_API_KEY: str = ""  # optional: enables live benchmark scores in model picker
 
     # ── Services & compute ───────────────────────────────────────────────
     SERVICES_ENABLED: str = "inference,render"
@@ -41,6 +42,7 @@ class Settings(BaseSettings):
     # ── Billing ──────────────────────────────────────────────────────────
     ELECTRICITY_RATE_KWH: float = 0.346
     CURRENCY: str = "NZD"
+    GPU_VRAM_GB: float = 16.0  # GPU VRAM in GB — used by model picker VRAM filter
     GPU_INFERENCE_WATTS: float = 150
     GPU_RENDER_WATTS: float = 300
     SYSTEM_WATTS: float = 80

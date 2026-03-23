@@ -359,4 +359,55 @@ export const admin = {
     ),
 };
 
+// Model picker
+export interface ModelPickerCloudRec {
+  type: "cloud";
+  id: string;
+  name: string;
+  provider: string;
+  cost_per_1m: string;
+  cost_per_1m_input_usd: number;
+  cost_per_1m_output_usd: number;
+  context_length: number | null;
+  benchmark_score: number | null;
+  benchmark_label: string;
+  in_catalog: boolean;
+  why: string;
+}
+
+export interface ModelPickerLocalRec {
+  type: "local";
+  id: string;
+  name: string;
+  provider: string;
+  cost_per_1m: string;
+  vram_required_gb: number;
+  vram_spare_gb: number;
+  params_b: number;
+  tokens_per_sec: number;
+  daily_electricity_cost: number;
+  available: boolean;
+  why: string;
+}
+
+export interface ModelPickerIntent {
+  id: string;
+  label: string;
+  tags: { difficulty: string; latency_pref: string };
+  cloud: ModelPickerCloudRec;
+  local: ModelPickerLocalRec | null;
+}
+
+export interface ModelPickerResponse {
+  intents: ModelPickerIntent[];
+  gpu_vram_gb: number;
+  data_source: "live" | "static";
+  cache_age_seconds: number | null;
+  benchmarks_enabled: boolean;
+}
+
+export const modelPicker = {
+  getRecommendations: () => get<ModelPickerResponse>("/v1/model-picker/recommendations"),
+};
+
 export { ApiError };

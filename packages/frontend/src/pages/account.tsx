@@ -20,7 +20,8 @@ import { useTheme } from "../theme-provider";
 import { type ThemeName, THEME_LABELS } from "../theme.config";
 import { PaymentMethodSetup } from "../components/PaymentMethodSetup";
 import { fmtUsd } from "../lib/format";
-import { isGuest } from "../lib/auth";
+import { isGuest, clearToken } from "../lib/auth";
+import { router } from "../router";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -1147,6 +1148,26 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
           )}
         </div>
       )}
+
+      {/* Sign Out */}
+      <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB] flex items-center justify-between">
+        <div>
+          <h3 className="font-medium">Sign out</h3>
+          {user?.email && <p className="text-sm text-[#6F6B66] mt-0.5">{user.email}</p>}
+        </div>
+        <Button
+          onClick={() => {
+            trigger("nudge");
+            clearToken();
+            router.navigate({ to: "/login" });
+          }}
+          variant="ghost"
+          size="sm"
+          className="text-[#C62828] hover:text-[#B71C1C] shrink-0"
+        >
+          Logout
+        </Button>
+      </div>
 
       {/* Payment Method Setup Modal */}
       {setupClientSecret && (

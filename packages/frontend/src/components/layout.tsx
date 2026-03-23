@@ -355,52 +355,22 @@ export function Layout() {
             );
           })}
         </nav>
-        <div className="p-4 border-t border-[#E5E1DB] space-y-2">
-          {!desktopSidebarCollapsed && (
-            <>
-              {billingEnabled && balance !== null && (
-                <div className="text-sm">
-                  <span className="text-[#6F6B66]">
-                    {balance! < 0 ? "Debt: " : "Balance: "}
-                  </span>
-                  <span
-                    className={
-                      balance! > balanceThresholds.high
-                        ? "text-[#2E7D32]"
-                        : balance! > balanceThresholds.medium
-                          ? "text-[#E65100]"
-                          : balance! > balanceThresholds.low
-                            ? "text-[#EF6C00]"
-                            : "text-[#C62828]"
-                    }
-                  >
-                    {fmtUsd(balance!)}
-                  </span>
-                </div>
-              )}
-              {email && (
-                <div className="text-xs text-[#B1ADA1] truncate">{email}</div>
-              )}
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start"
-              >
-                Logout
-              </Button>
-              <button
-                onClick={() => {
-                  setDesktopSidebarCollapsed(true);
-                  localStorage.setItem("gpushare_sidebar_collapsed", "true");
-                }}
-                className="text-xs text-[#B1ADA1] hover:text-[#6F6B66] w-full text-left"
-              >
-                Collapse sidebar
-              </button>
-            </>
-          )}
-        </div>
+        {!desktopSidebarCollapsed && (
+          <div className="p-4 border-t border-[#E5E1DB] flex justify-end">
+            <button
+              onClick={() => {
+                setDesktopSidebarCollapsed(true);
+                localStorage.setItem("gpushare_sidebar_collapsed", "true");
+              }}
+              className="text-[#B1ADA1] hover:text-[#6F6B66] transition-colors"
+              title="Collapse sidebar"
+            >
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Mobile Top Bar */}
@@ -469,42 +439,6 @@ export function Layout() {
                         </Link>
                       );
                     })}
-                    <div className="border-t border-[#E5E1DB] mt-1 pt-1">
-                      {billingEnabled && balance !== null && (
-                        <div className="px-4 py-2 text-sm">
-                          <span className="text-[#6F6B66]">
-                            {balance! < 0 ? "Debt: " : "Balance: "}
-                          </span>
-                          <span
-                            className={
-                              balance! > 10
-                                ? "text-[#2E7D32]"
-                                : balance! > 5
-                                  ? "text-[#E65100]"
-                                  : balance! > 0
-                                    ? "text-[#EF6C00]"
-                                    : "text-[#C62828]"
-                            }
-                          >
-                            {fmtUsd(balance!)}
-                          </span>
-                        </div>
-                      )}
-                      {email && (
-                        <div className="px-4 py-1 text-xs text-[#6F6B66] truncate">
-                          {email}
-                        </div>
-                      )}
-                      <button
-                        onClick={() => {
-                          handleLogout();
-                          setMobileMenuOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-[#C62828] hover:bg-[#FFEBEE] transition-colors"
-                      >
-                        Logout
-                      </button>
-                    </div>
                   </div>
                 </>
               )}
