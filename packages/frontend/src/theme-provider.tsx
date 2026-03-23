@@ -1,84 +1,95 @@
-import { useEffect } from "react";
-import { theme } from "./theme.config";
+import { createContext, useContext, useState, useEffect } from "react";
+import { theme, themeColors, type ThemeName } from "./theme.config";
+
+interface ThemeContextValue {
+  activeTheme: ThemeName;
+  setActiveTheme: (name: ThemeName) => void;
+}
+
+const ThemeContext = createContext<ThemeContextValue>({
+  activeTheme: "default",
+  setActiveTheme: () => {},
+});
+
+export function useTheme() {
+  return useContext(ThemeContext);
+}
+
+function applyThemeColors(name: ThemeName) {
+  const root = document.documentElement;
+  const c = themeColors[name];
+
+  root.setAttribute("data-theme", name);
+
+  root.style.setProperty("--color-primary", c.primary.DEFAULT);
+  root.style.setProperty("--color-primary-hover", c.primary.hover);
+  root.style.setProperty("--color-primary-light", c.primary.light);
+
+  root.style.setProperty("--color-success", c.success.DEFAULT);
+  root.style.setProperty("--color-success-hover", c.success.hover);
+  root.style.setProperty("--color-success-bg", c.success.bg);
+  root.style.setProperty("--color-success-text", c.success.text);
+
+  root.style.setProperty("--color-error", c.error.DEFAULT);
+  root.style.setProperty("--color-error-hover", c.error.hover);
+  root.style.setProperty("--color-error-bg", c.error.bg);
+  root.style.setProperty("--color-error-text", c.error.text);
+
+  root.style.setProperty("--color-warning", c.warning.DEFAULT);
+  root.style.setProperty("--color-warning-hover", c.warning.hover);
+  root.style.setProperty("--color-warning-bg", c.warning.bg);
+  root.style.setProperty("--color-warning-text", c.warning.text);
+
+  root.style.setProperty("--color-info", c.info.DEFAULT);
+  root.style.setProperty("--color-info-hover", c.info.hover);
+  root.style.setProperty("--color-info-bg", c.info.bg);
+  root.style.setProperty("--color-info-text", c.info.text);
+
+  root.style.setProperty("--color-bg-primary", c.background.primary);
+  root.style.setProperty("--color-bg-secondary", c.background.secondary);
+  root.style.setProperty("--color-bg-tertiary", c.background.tertiary);
+  root.style.setProperty("--color-bg-elevated", c.background.elevated);
+
+  root.style.setProperty("--color-text-primary", c.text.primary);
+  root.style.setProperty("--color-text-secondary", c.text.secondary);
+  root.style.setProperty("--color-text-tertiary", c.text.tertiary);
+  root.style.setProperty("--color-text-muted", c.text.muted);
+  root.style.setProperty("--color-text-disabled", c.text.disabled);
+
+  root.style.setProperty("--color-border", c.border.DEFAULT);
+  root.style.setProperty("--color-border-light", c.border.light);
+  root.style.setProperty("--color-border-dark", c.border.dark);
+
+  // Update theme-color meta tag
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute("content", c.background.primary);
+  }
+}
 
 /**
  * ThemeProvider component
- * Injects theme CSS variables into the document root
+ * Injects theme CSS variables into the document root and provides
+ * a context for switching between palettes.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const stored = (localStorage.getItem("gpushare_theme") ?? "default") as ThemeName;
+  const [activeTheme, setActiveThemeState] = useState<ThemeName>(stored);
+
+  const setActiveTheme = (name: ThemeName) => {
+    setActiveThemeState(name);
+    localStorage.setItem("gpushare_theme", name);
+    applyThemeColors(name);
+  };
+
   useEffect(() => {
     const root = document.documentElement;
 
     // Update document title
     document.title = theme.branding.appName;
 
-    // Update theme-color meta tag
-    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (metaThemeColor) {
-      metaThemeColor.setAttribute("content", theme.colors.background.primary);
-    }
-
-    // Primary colors
-    root.style.setProperty("--color-primary", theme.colors.primary.DEFAULT);
-    root.style.setProperty("--color-primary-hover", theme.colors.primary.hover);
-    root.style.setProperty("--color-primary-light", theme.colors.primary.light);
-
-    // Success colors
-    root.style.setProperty("--color-success", theme.colors.success.DEFAULT);
-    root.style.setProperty("--color-success-hover", theme.colors.success.hover);
-    root.style.setProperty("--color-success-bg", theme.colors.success.bg);
-    root.style.setProperty("--color-success-text", theme.colors.success.text);
-
-    // Error colors
-    root.style.setProperty("--color-error", theme.colors.error.DEFAULT);
-    root.style.setProperty("--color-error-hover", theme.colors.error.hover);
-    root.style.setProperty("--color-error-bg", theme.colors.error.bg);
-    root.style.setProperty("--color-error-text", theme.colors.error.text);
-
-    // Warning colors
-    root.style.setProperty("--color-warning", theme.colors.warning.DEFAULT);
-    root.style.setProperty("--color-warning-hover", theme.colors.warning.hover);
-    root.style.setProperty("--color-warning-bg", theme.colors.warning.bg);
-    root.style.setProperty("--color-warning-text", theme.colors.warning.text);
-
-    // Info colors
-    root.style.setProperty("--color-info", theme.colors.info.DEFAULT);
-    root.style.setProperty("--color-info-hover", theme.colors.info.hover);
-    root.style.setProperty("--color-info-bg", theme.colors.info.bg);
-    root.style.setProperty("--color-info-text", theme.colors.info.text);
-
-    // Background colors
-    root.style.setProperty(
-      "--color-bg-primary",
-      theme.colors.background.primary,
-    );
-    root.style.setProperty(
-      "--color-bg-secondary",
-      theme.colors.background.secondary,
-    );
-    root.style.setProperty(
-      "--color-bg-tertiary",
-      theme.colors.background.tertiary,
-    );
-    root.style.setProperty(
-      "--color-bg-elevated",
-      theme.colors.background.elevated,
-    );
-
-    // Text colors
-    root.style.setProperty("--color-text-primary", theme.colors.text.primary);
-    root.style.setProperty(
-      "--color-text-secondary",
-      theme.colors.text.secondary,
-    );
-    root.style.setProperty("--color-text-tertiary", theme.colors.text.tertiary);
-    root.style.setProperty("--color-text-muted", theme.colors.text.muted);
-    root.style.setProperty("--color-text-disabled", theme.colors.text.disabled);
-
-    // Border colors
-    root.style.setProperty("--color-border", theme.colors.border.DEFAULT);
-    root.style.setProperty("--color-border-light", theme.colors.border.light);
-    root.style.setProperty("--color-border-dark", theme.colors.border.dark);
+    // Apply color palette
+    applyThemeColors(activeTheme);
 
     // Typography
     root.style.setProperty("--font-sans", theme.typography.fontFamily.sans);
@@ -86,18 +97,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // Spacing
     root.style.setProperty("--sidebar-width", theme.spacing.sidebarWidth);
-    root.style.setProperty(
-      "--mobile-sidebar-width",
-      theme.spacing.mobileSidebarWidth,
-    );
-    root.style.setProperty(
-      "--mobile-topbar-height",
-      theme.spacing.mobileTopBarHeight,
-    );
-    root.style.setProperty(
-      "--mobile-bottombar-height",
-      theme.spacing.mobileBottomBarHeight,
-    );
+    root.style.setProperty("--mobile-sidebar-width", theme.spacing.mobileSidebarWidth);
+    root.style.setProperty("--mobile-topbar-height", theme.spacing.mobileTopBarHeight);
+    root.style.setProperty("--mobile-bottombar-height", theme.spacing.mobileBottomBarHeight);
 
     // Border radius
     root.style.setProperty("--radius-sm", theme.borderRadius.sm);
@@ -112,13 +114,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // Status colors
     root.style.setProperty("--status-online", theme.status.online.color);
-    root.style.setProperty(
-      "--status-warming-up",
-      theme.status.warming_up.color,
-    );
+    root.style.setProperty("--status-warming-up", theme.status.warming_up.color);
     root.style.setProperty("--status-degraded", theme.status.degraded.color);
     root.style.setProperty("--status-offline", theme.status.offline.color);
   }, []);
 
-  return <>{children}</>;
+  return (
+    <ThemeContext.Provider value={{ activeTheme, setActiveTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }

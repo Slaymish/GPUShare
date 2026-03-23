@@ -46,6 +46,7 @@ class User(Base):
     )
     password_reset_token: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     password_reset_expires: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    theme: Mapped[str] = mapped_column(String, default="default", server_default=text("'default'"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=text("now()"),

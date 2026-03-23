@@ -311,6 +311,7 @@ async def me(user: User | None = Depends(get_current_user)):
             billing_type="prepaid",
             hard_limit_nzd=0.0,
             services_enabled=["inference"],
+            theme="default",
             created_at=datetime.now(timezone.utc),
         )
     return user
@@ -322,7 +323,7 @@ async def update_me(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update the current user's profile (name, email)."""
+    """Update the current user's profile (name, email, theme)."""
     if body.name is not None:
         user.name = body.name
     if body.email is not None:
@@ -332,6 +333,11 @@ async def update_me(
         if existing and existing.id != user.id:
             raise HTTPException(status_code=400, detail="Email already in use")
         user.email = body.email
+    if body.theme is not None:
+        valid_themes = {"default", "light", "dark"}
+        if body.theme not in valid_themes:
+            raise HTTPException(status_code=400, detail=f"Invalid theme. Must be one of: {', '.join(valid_themes)}")
+        user.theme = body.theme
     
     await db.commit()
     await db.refresh(user)

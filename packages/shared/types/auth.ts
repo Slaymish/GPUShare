@@ -25,6 +25,7 @@ export interface UserResponse {
   hard_limit_nzd: number;
   services_enabled: string[];
   stripe_customer_id: string | null;
+  theme: string;
   created_at: string;
 }
 

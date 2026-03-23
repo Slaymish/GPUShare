@@ -36,6 +36,7 @@ class UserResponse(BaseModel):
     billing_type: str
     hard_limit_nzd: float
     services_enabled: list[str]
+    theme: str
     created_at: datetime
 
 
@@ -65,6 +66,7 @@ class ApiKeyResponse(BaseModel):
 class UpdateProfileRequest(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
+    theme: str | None = None
 
 
 class PasswordResetRequest(BaseModel):

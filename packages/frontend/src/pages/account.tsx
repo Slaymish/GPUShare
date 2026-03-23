@@ -9,6 +9,15 @@ import type {
   InvoiceResponse,
 } from "@shared/types/billing";
 import { Button, Input, StatCard, RelativeTime } from "../components/ui";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "../components/ui/select";
+import { useTheme } from "../theme-provider";
+import { type ThemeName, THEME_LABELS } from "../theme.config";
 import { PaymentMethodSetup } from "../components/PaymentMethodSetup";
 import { fmtUsd } from "../lib/format";
 import { isGuest } from "../lib/auth";
@@ -72,6 +81,8 @@ function AccountSkeleton() {
 
 export function AccountPage() {
   const { trigger } = useWebHaptics();
+  const { activeTheme, setActiveTheme } = useTheme();
+  const [themeSaving, setThemeSaving] = useState(false);
   const [user, setUser] = useState<UserResponse | null>(null);
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [usage, setUsage] = useState<UsageLogResponse[]>([]);
@@ -177,6 +188,7 @@ export function AccountPage() {
         setLimitInput(u.hard_limit_nzd.toString());
         setEditName(u.name || "");
         setEditEmail(u.email);
+        if (u.theme) setActiveTheme(u.theme as ThemeName);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -251,6 +263,19 @@ export function AccountPage() {
       trigger("error");
     }
     setProfileSaving(false);
+  }
+
+  async function handleThemeChange(name: ThemeName) {
+    setActiveTheme(name);
+    setThemeSaving(true);
+    try {
+      const updated = await authApi.updateMe({ theme: name });
+      setUser(updated);
+      trigger("success");
+    } catch {
+      trigger("error");
+    }
+    setThemeSaving(false);
   }
 
   async function handleRequestPasswordReset() {
@@ -660,6 +685,28 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
           </div>
         </div>
       )}
+
+      {/* Appearance */}
+      <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
+        <h3 className="font-medium mb-1">Appearance</h3>
+        <p className="text-sm text-[#6F6B66] mb-3">Choose a colour palette for the interface.</p>
+        <Select
+          value={activeTheme}
+          onValueChange={(v) => handleThemeChange(v as ThemeName)}
+          disabled={themeSaving}
+        >
+          <SelectTrigger className="w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(THEME_LABELS) as ThemeName[]).map((key) => (
+              <SelectItem key={key} value={key}>
+                {THEME_LABELS[key]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Password Reset */}
       {user && !isGuest() && (

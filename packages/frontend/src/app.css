@@ -5,12 +5,16 @@
   --color-primary-hover: #A84E30;
   --color-success: #2E7D32;
   --color-error: #C62828;
-  --color-bg: #F4F3EE;
-  --color-surface: #FFFFFF;
+  --color-bg-primary: #F4F3EE;
+  --color-bg-secondary: #FFFFFF;
+  --color-bg-tertiary: #EDEAE3;
+  --color-bg-elevated: #FFFFFF;
   --color-border: #E5E1DB;
-  --color-text: #2D2B28;
+  --color-border-light: #EDEBE6;
+  --color-text-primary: #2D2B28;
   --color-text-secondary: #6F6B66;
   --color-text-muted: #B1ADA1;
+  --color-text-disabled: #C8C4BC;
 }
 
 * {
@@ -21,11 +25,84 @@ html,
 body {
   overflow-x: hidden;
   max-width: 100vw;
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
 }
 
 #root {
   overflow-x: hidden;
   max-width: 100vw;
+}
+
+/* ── Dark theme overrides ──────────────────────────────────────────────────── */
+/* Override hardcoded Tailwind hex classes that components use directly.        */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* White / card surfaces */
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-\[\#FFFFFF\] {
+  background-color: var(--color-bg-secondary) !important;
+}
+
+/* Page / warm off-white backgrounds */
+[data-theme="dark"] .bg-\[\#F4F3EE\] {
+  background-color: var(--color-bg-primary) !important;
+}
+
+/* Input / subtle secondary backgrounds */
+[data-theme="dark"] .bg-\[\#EDEAE3\],
+[data-theme="dark"] .bg-\[\#EDEBE6\] {
+  background-color: var(--color-bg-tertiary) !important;
+}
+
+/* Skeleton pulse */
+[data-theme="dark"] .bg-\[\#E5E1DB\] {
+  background-color: var(--color-bg-tertiary) !important;
+}
+
+/* Borders */
+[data-theme="dark"] .border-\[\#E5E1DB\] {
+  border-color: var(--color-border) !important;
+}
+[data-theme="dark"] .border-\[\#EDEBE6\] {
+  border-color: var(--color-border-light) !important;
+}
+
+/* Primary text */
+[data-theme="dark"] .text-\[\#2D2B28\] {
+  color: var(--color-text-primary) !important;
+}
+
+/* Secondary text */
+[data-theme="dark"] .text-\[\#6F6B66\] {
+  color: var(--color-text-secondary) !important;
+}
+
+/* Muted / placeholder text */
+[data-theme="dark"] .text-\[\#B1ADA1\] {
+  color: var(--color-text-muted) !important;
+}
+
+/* Disabled text */
+[data-theme="dark"] .text-\[\#C8C4BC\] {
+  color: var(--color-text-disabled) !important;
+}
+
+/* Select / dropdown overlay */
+[data-theme="dark"] .bg-\[\#F4F3EE\] {
+  background-color: var(--color-bg-primary) !important;
+}
+
+/* Hover states for secondary button and ghost */
+[data-theme="dark"] .hover\:bg-\[\#EDEAE3\]:hover,
+[data-theme="dark"] .hover\:bg-\[\#E5E1DB\]:hover {
+  background-color: var(--color-bg-tertiary) !important;
+}
+
+/* Focus ring offset */
+[data-theme="dark"] .focus\:ring-offset-\[\#F4F3EE\]:focus {
+  --tw-ring-offset-color: var(--color-bg-primary) !important;
 }
