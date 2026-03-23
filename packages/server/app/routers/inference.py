@@ -44,6 +44,39 @@ from app.schemas.inference import (
 router = APIRouter(prefix="/v1/inference", tags=["inference"])
 
 
+def _extract_text(content: str | list) -> str:
+    """Extract plain text from a message content (str or list of ContentParts)."""
+    if isinstance(content, str):
+        return content
+    from app.schemas.inference import ContentPart
+    return " ".join(p.text for p in content if isinstance(p, ContentPart) and p.type == "text" and p.text)
+
+
+def _to_ollama_message(m) -> dict:
+    """Convert a ChatMessage to Ollama API format (images array for vision)."""
+    if isinstance(m.content, str):
+        return {"role": m.role, "content": m.content}
+    from app.schemas.inference import ContentPart
+    text_parts = [p.text for p in m.content if isinstance(p, ContentPart) and p.type == "text" and p.text]
+    images = []
+    for p in m.content:
+        if isinstance(p, ContentPart) and p.type == "image_url" and p.image_url:
+            url = p.image_url.get("url", "")
+            if "," in url:
+                images.append(url.split(",", 1)[1])
+    msg: dict = {"role": m.role, "content": " ".join(text_parts)}
+    if images:
+        msg["images"] = images
+    return msg
+
+
+def _to_openrouter_message(m) -> dict:
+    """Convert a ChatMessage to OpenRouter/OpenAI API format (content parts)."""
+    if isinstance(m.content, str):
+        return {"role": m.role, "content": m.content}
+    return {"role": m.role, "content": [p.model_dump(exclude_none=True) for p in m.content]}
+
+
 # ---------------------------------------------------------------------------
 # POST /chat/completions
 # ---------------------------------------------------------------------------
@@ -66,12 +99,15 @@ async def create_chat_completion(
                 detail="Insufficient balance. Please top up your account.",
             )
 
-    # Count input tokens
-    input_text = " ".join(m.content for m in body.messages)
+    # Count input tokens (text parts only)
+    input_text = " ".join(_extract_text(m.content) for m in body.messages)
     input_tokens = count_tokens(input_text)
 
-    messages = [{"role": m.role, "content": m.content} for m in body.messages]
     use_openrouter = is_openrouter_model(body.model) and settings.OPENROUTER_API_KEY
+    if use_openrouter:
+        messages = [_to_openrouter_message(m) for m in body.messages]
+    else:
+        messages = [_to_ollama_message(m) for m in body.messages]
 
     if body.stream:
         return StreamingResponse(

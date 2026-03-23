@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useWebHaptics } from "../lib/haptics";
 import { inference, skills as skillsApi, getHealth } from "../lib/api";
-import type { ChatMessage } from "@shared/types/inference";
+import type { ChatMessage, ContentPart } from "@shared/types/inference";
 import type { ModelInfo } from "@shared/types/inference";
 import type { SkillSummary, SkillDetail } from "@shared/types/skills";
 import {
@@ -18,6 +18,13 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { isGuest } from "../lib/auth";
+
+interface Attachment {
+  name: string;
+  mimeType: string;
+  dataUrl: string;       // full data: URL (images only)
+  textContent?: string;  // set for text files
+}
 
 interface ActiveSkill {
   name: string;
@@ -62,8 +69,11 @@ function shortModelName(model: string): string {
 function deriveTitle(messages: ChatMessage[]): string {
   const first = messages.find((m) => m.role === "user");
   if (!first) return "New Chat";
-  const text = first.content.slice(0, 40);
-  return text.length < first.content.length ? text + "..." : text;
+  const raw =
+    typeof first.content === "string"
+      ? first.content
+      : (first.content.find((p) => p.type === "text")?.text ?? "Attachment");
+  return raw.length > 40 ? raw.slice(0, 40) + "..." : raw;
 }
 
 const QUICK_PROMPTS = [
@@ -103,8 +113,10 @@ export function ChatPage() {
     Record<string, "up" | "down">
   >({});
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const streamStartTime = useRef<number | null>(null);
   const elapsedInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -247,9 +259,74 @@ export function ChatPage() {
     }
   }
 
+  function handleFileSelect(files: FileList) {
+    const remaining = 5 - attachments.length;
+    if (remaining <= 0) return;
+    const toAdd = Array.from(files).slice(0, remaining);
+    const promises = toAdd.map(
+      (file) =>
+        new Promise<Attachment>((resolve, reject) => {
+          if (file.size > 10 * 1024 * 1024) {
+            reject(new Error(`${file.name} exceeds 10 MB limit`));
+            return;
+          }
+          const reader = new FileReader();
+          if (file.type.startsWith("image/")) {
+            reader.onload = () =>
+              resolve({
+                name: file.name,
+                mimeType: file.type,
+                dataUrl: reader.result as string,
+              });
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+          } else {
+            reader.onload = () =>
+              resolve({
+                name: file.name,
+                mimeType: file.type || "text/plain",
+                dataUrl: "",
+                textContent: reader.result as string,
+              });
+            reader.onerror = () => reject(reader.error);
+            reader.readAsText(file);
+          }
+        }),
+    );
+    Promise.allSettled(promises).then((results) => {
+      const loaded = results
+        .filter((r) => r.status === "fulfilled")
+        .map((r) => (r as PromiseFulfilledResult<Attachment>).value);
+      setAttachments((prev) => [...prev, ...loaded]);
+    });
+  }
+
+  function buildMessageContent(
+    text: string,
+    atts: Attachment[],
+  ): string | ContentPart[] {
+    if (atts.length === 0) return text;
+    const parts: ContentPart[] = [];
+    for (const att of atts) {
+      if (att.mimeType.startsWith("image/")) {
+        parts.push({ type: "image_url", image_url: { url: att.dataUrl } });
+      } else if (att.textContent !== undefined) {
+        const ext = att.name.split(".").pop() ?? "";
+        parts.push({
+          type: "text",
+          text: `\`\`\`${ext}\n// ${att.name}\n${att.textContent}\n\`\`\``,
+        });
+      }
+    }
+    if (text) parts.push({ type: "text", text });
+    return parts;
+  }
+
   async function handleSend(overrideText?: string) {
     const text = (overrideText ?? input).trim();
-    if (!text || !selectedModel || streaming) return;
+    const currentAttachments = overrideText ? [] : attachments;
+    if ((!text && currentAttachments.length === 0) || !selectedModel || streaming)
+      return;
     trigger("nudge");
 
     let chatId = activeChatId;
@@ -267,7 +344,10 @@ export function ChatPage() {
       chatId = chat.id;
     }
 
-    const userMsg: ChatMessage = { role: "user", content: text };
+    const userMsg: ChatMessage = {
+      role: "user",
+      content: buildMessageContent(text, currentAttachments),
+    };
     const updatedMessages = [...messages, userMsg];
 
     const currentSkills = activeSkills;
@@ -293,6 +373,7 @@ export function ChatPage() {
     }));
 
     setInput("");
+    setAttachments([]);
     setStreaming(true);
     setLastElapsedSeconds(null);
     setLastTokenCount(null);
@@ -366,9 +447,13 @@ export function ChatPage() {
       return { ...c, messages: msgs };
     });
 
-    // Re-send the last user message
+    // Re-send the last user message (text only for regenerate)
     setTimeout(() => {
-      handleSend(lastUserMsg.content);
+      const text =
+        typeof lastUserMsg.content === "string"
+          ? lastUserMsg.content
+          : (lastUserMsg.content.find((p) => p.type === "text")?.text ?? "");
+      handleSend(text);
     }, 50);
   }
 
@@ -732,7 +817,29 @@ export function ChatPage() {
                     }`}
                   >
                     {msg.role === "user" ? (
-                      msg.content
+                      typeof msg.content === "string" ? (
+                        msg.content
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {msg.content
+                            .filter((p) => p.type === "image_url")
+                            .map((p, pi) => (
+                              <img
+                                key={pi}
+                                src={p.image_url!.url}
+                                alt="attachment"
+                                className="max-w-xs max-h-48 rounded-lg object-contain bg-black/10"
+                              />
+                            ))}
+                          {msg.content
+                            .filter((p) => p.type === "text")
+                            .map((p, pi) => (
+                              <span key={pi} className="whitespace-pre-wrap">
+                                {p.text}
+                              </span>
+                            ))}
+                        </div>
+                      )
                     ) : msg.content === "" && streaming ? (
                       <span className="animate-pulse text-[#B1ADA1]">
                         {queuePosition !== null && queuePosition > 0
@@ -744,7 +851,7 @@ export function ChatPage() {
                         remarkPlugins={[remarkGfm]}
                         className="prose prose-sm max-w-none prose-pre:bg-[#F4F3EE] prose-pre:text-[#2D2B28] prose-code:text-[#C15F3C] prose-code:bg-[#F4F3EE] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-['']"
                       >
-                        {msg.content}
+                        {msg.content as string}
                       </ReactMarkdown>
                     )}
 
@@ -752,7 +859,7 @@ export function ChatPage() {
                     {msg.role === "assistant" && msg.content !== "" && (
                       <div className="absolute -bottom-8 right-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button
-                          onClick={() => handleCopy(msg.content, i)}
+                          onClick={() => handleCopy(msg.content as string, i)}
                           className="px-1.5 py-1 rounded text-xs bg-white border border-[#E5E1DB] text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1] transition-colors"
                           title="Copy"
                         >
@@ -872,7 +979,59 @@ export function ChatPage() {
                   )}
                 </div>
               )}
+              {/* Attachment preview strip */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {attachments.map((att, i) => (
+                    <div
+                      key={i}
+                      className="relative flex items-center gap-1.5 bg-white border border-[#E5E1DB] rounded-lg px-2 py-1.5 text-xs text-[#6F6B66]"
+                    >
+                      {att.mimeType.startsWith("image/") ? (
+                        <img
+                          src={att.dataUrl}
+                          alt={att.name}
+                          className="w-8 h-8 rounded object-cover"
+                        />
+                      ) : (
+                        <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                          <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      )}
+                      <span className="max-w-[100px] truncate">{att.name}</span>
+                      <button
+                        onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                        className="text-[#B1ADA1] hover:text-[#C62828] ml-0.5"
+                        title="Remove"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,text/*,.py,.js,.ts,.tsx,.jsx,.json,.csv,.md,.txt,.log,.yaml,.yml,.toml,.xml,.html,.css,.sh,.env"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) handleFileSelect(e.target.files);
+                  e.target.value = "";
+                }}
+              />
               <div className="flex gap-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={streaming || attachments.length >= 5}
+                  className="shrink-0 p-2 rounded-xl border border-[#E5E1DB] bg-white text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Attach file"
+                >
+                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                </button>
                 <Textarea
                   ref={inputRef}
                   value={input}
@@ -888,7 +1047,7 @@ export function ChatPage() {
                 />
                 <Button
                   onClick={() => handleSend()}
-                  disabled={streaming || !input.trim()}
+                  disabled={streaming || (!input.trim() && attachments.length === 0)}
                   className="rounded-xl px-4 md:px-6 whitespace-nowrap"
                   size="lg"
                 >

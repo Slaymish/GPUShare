@@ -361,20 +361,20 @@ export function Layout() {
               {billingEnabled && balance !== null && (
                 <div className="text-sm">
                   <span className="text-[#6F6B66]">
-                    {balance < 0 ? "Debt: " : "Balance: "}
+                    {balance! < 0 ? "Debt: " : "Balance: "}
                   </span>
                   <span
                     className={
-                      balance > balanceThresholds.high
+                      balance! > balanceThresholds.high
                         ? "text-[#2E7D32]"
-                        : balance > balanceThresholds.medium
+                        : balance! > balanceThresholds.medium
                           ? "text-[#E65100]"
-                          : balance > balanceThresholds.low
+                          : balance! > balanceThresholds.low
                             ? "text-[#EF6C00]"
                             : "text-[#C62828]"
                     }
                   >
-                    {fmtUsd(balance)}
+                    {fmtUsd(balance!)}
                   </span>
                 </div>
               )}
@@ -473,20 +473,20 @@ export function Layout() {
                       {billingEnabled && balance !== null && (
                         <div className="px-4 py-2 text-sm">
                           <span className="text-[#6F6B66]">
-                            {balance < 0 ? "Debt: " : "Balance: "}
+                            {balance! < 0 ? "Debt: " : "Balance: "}
                           </span>
                           <span
                             className={
-                              balance > 10
+                              balance! > 10
                                 ? "text-[#2E7D32]"
-                                : balance > 5
+                                : balance! > 5
                                   ? "text-[#E65100]"
-                                  : balance > 0
+                                  : balance! > 0
                                     ? "text-[#EF6C00]"
                                     : "text-[#C62828]"
                             }
                           >
-                            {fmtUsd(balance)}
+                            {fmtUsd(balance!)}
                           </span>
                         </div>
                       )}
@@ -574,20 +574,20 @@ export function Layout() {
               {billingEnabled && balance !== null && (
                 <div className="text-sm">
                   <span className="text-[#6F6B66]">
-                    {balance < 0 ? "Debt: " : "Balance: "}
+                    {balance! < 0 ? "Debt: " : "Balance: "}
                   </span>
                   <span
                     className={
-                      balance > 10
+                      balance! > 10
                         ? "text-[#2E7D32]"
-                        : balance > 5
+                        : balance! > 5
                           ? "text-[#E65100]"
-                          : balance > 0
+                          : balance! > 0
                             ? "text-[#EF6C00]"
                             : "text-[#C62828]"
                     }
                   >
-                    {fmtUsd(balance)}
+                    {fmtUsd(balance!)}
                   </span>
                 </div>
               )}

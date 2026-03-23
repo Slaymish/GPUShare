@@ -5,9 +5,15 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 
 
+class ContentPart(BaseModel):
+    type: str
+    text: str | None = None
+    image_url: dict | None = None
+
+
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: str | list[ContentPart]
 
 
 class ChatCompletionRequest(BaseModel):
