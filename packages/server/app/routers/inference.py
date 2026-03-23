@@ -383,8 +383,8 @@ async def list_models(
                 # OpenRouter pricing is per-token as a string
                 prompt_rate = float(pricing.get("prompt", "0"))
                 completion_rate = float(pricing.get("completion", "0"))
-                # Average the two rates and multiply by 1M for display
-                avg_rate = (prompt_rate + completion_rate) / 2
+                # Blended display rate: 3/4 input + 1/4 output (typical usage skews heavily toward input)
+                avg_rate = (3 * prompt_rate + completion_rate) / 4
                 # OpenRouter models support vision if the model architecture includes image input
                 architecture = m.get("architecture", {})
                 input_modalities = architecture.get("input_modalities") or architecture.get("modality", "")
