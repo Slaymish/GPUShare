@@ -1,10 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { modelPicker } from "../lib/api";
 import type {
@@ -34,7 +29,9 @@ type Step = 1 | 2 | 3;
 
 // ── Static fallback (used when backend is unavailable) ────────────────────
 
-function toFallbackIntent(entry: (typeof MODEL_PICKER_CONFIG)[0]): ModelPickerIntent {
+function toFallbackIntent(
+  entry: (typeof MODEL_PICKER_CONFIG)[0],
+): ModelPickerIntent {
   const cloud = entry.recommendations.find((r) => r.type === "Cloud");
   const local = entry.recommendations.find((r) => r.type === "Local");
   return {
@@ -62,7 +59,9 @@ function toFallbackIntent(entry: (typeof MODEL_PICKER_CONFIG)[0]): ModelPickerIn
           name: local.name,
           provider: local.provider,
           cost_per_1m: "$0.00",
-          vram_required_gb: parseFloat(local.vram_required?.split(" ")[0] ?? "0"),
+          vram_required_gb: parseFloat(
+            local.vram_required?.split(" ")[0] ?? "0",
+          ),
           vram_spare_gb: 0,
           params_b: 0,
           tokens_per_sec: 0,
@@ -83,8 +82,18 @@ function BackButton({ onClick }: { onClick: () => void }) {
       className="text-[#6F6B66] hover:text-[#2D2B28] transition-colors shrink-0"
       aria-label="Back"
     >
-      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+      <svg
+        viewBox="0 0 24 24"
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15 19l-7-7 7-7"
+        />
       </svg>
     </button>
   );
@@ -100,8 +109,8 @@ function StepDots({ step }: { step: Step }) {
             s === step
               ? "w-4 h-1.5 bg-[#C15F3C]"
               : s < step
-              ? "w-1.5 h-1.5 bg-[#C15F3C]/40"
-              : "w-1.5 h-1.5 bg-[#E5E1DB]"
+                ? "w-1.5 h-1.5 bg-[#C15F3C]/40"
+                : "w-1.5 h-1.5 bg-[#E5E1DB]"
           }`}
         />
       ))}
@@ -128,7 +137,9 @@ function CloudCard({
       </div>
 
       <div>
-        <div className="font-semibold text-[#2D2B28] text-sm leading-snug">{rec.name}</div>
+        <div className="font-semibold text-[#2D2B28] text-sm leading-snug">
+          {rec.name}
+        </div>
         <div className="text-xs text-[#6F6B66] mt-0.5">{rec.provider}</div>
         <div className="font-mono text-xs text-[#2D2B28] bg-[#F4F3EE] rounded px-1.5 py-0.5 mt-2 truncate">
           {rec.id}
@@ -150,7 +161,9 @@ function CloudCard({
         )}
         {rec.benchmark_score !== null && rec.benchmark_label && (
           <span>
-            <span className="font-medium text-[#2D2B28]">{rec.benchmark_label}:</span>{" "}
+            <span className="font-medium text-[#2D2B28]">
+              {rec.benchmark_label}:
+            </span>{" "}
             {typeof rec.benchmark_score === "number"
               ? `${rec.benchmark_score.toFixed(1)}%`
               : rec.benchmark_score}
@@ -169,7 +182,9 @@ function CloudCard({
         onClick={() =>
           onSelect({
             // Use weighted avg (3:1 input:output) to match the billing display
-            costPerMillionTokens: rec.cost_per_1m_input_usd * 0.75 + rec.cost_per_1m_output_usd * 0.25,
+            costPerMillionTokens:
+              rec.cost_per_1m_input_usd * 0.75 +
+              rec.cost_per_1m_output_usd * 0.25,
             ownedBy: "openrouter",
             visionSupport: false,
           })
@@ -210,7 +225,9 @@ function LocalCard({
       </div>
 
       <div>
-        <div className="font-semibold text-[#2D2B28] text-sm leading-snug">{rec.name}</div>
+        <div className="font-semibold text-[#2D2B28] text-sm leading-snug">
+          {rec.name}
+        </div>
         <div className="text-xs text-[#6F6B66] mt-0.5">{rec.provider}</div>
         <div className="font-mono text-xs text-[#2D2B28] bg-[#F4F3EE] rounded px-1.5 py-0.5 mt-2 truncate">
           {rec.id}
@@ -226,20 +243,24 @@ function LocalCard({
             <span className="font-medium text-[#2D2B28]">VRAM:</span>{" "}
             {rec.vram_required_gb} GB
             {fits && rec.vram_spare_gb > 0 && (
-              <span className="text-green-600"> ({rec.vram_spare_gb} GB spare)</span>
+              <span className="text-green-600">
+                {" "}
+                ({rec.vram_spare_gb} GB spare)
+              </span>
             )}
           </span>
         )}
         {rec.tokens_per_sec > 0 && (
           <span>
-            <span className="font-medium text-[#2D2B28]">Speed:</span>{" "}
-            ~{rec.tokens_per_sec} tok/s
+            <span className="font-medium text-[#2D2B28]">Speed:</span> ~
+            {rec.tokens_per_sec} tok/s
           </span>
         )}
         {rec.daily_electricity_cost > 0 && (
           <span>
-            <span className="font-medium text-[#2D2B28]">Electricity:</span>{" "}
-            ~{curr === "NZD" ? "NZ" : ""}${rec.daily_electricity_cost.toFixed(2)}/day
+            <span className="font-medium text-[#2D2B28]">Electricity:</span> ~
+            {curr === "NZD" ? "NZ" : ""}${rec.daily_electricity_cost.toFixed(2)}
+            /day
           </span>
         )}
       </div>
@@ -253,7 +274,11 @@ function LocalCard({
         variant={rec.available ? "primary" : "secondary"}
         className="w-full"
         onClick={() =>
-          onSelect({ costPerMillionTokens: 0, ownedBy: "local", visionSupport: false })
+          onSelect({
+            costPerMillionTokens: 0,
+            ownedBy: "local",
+            visionSupport: false,
+          })
         }
       >
         Use this model
@@ -264,9 +289,15 @@ function LocalCard({
 
 // ── Main modal ────────────────────────────────────────────────────────────
 
-export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }: Props) {
+export function ModelPickerModal({
+  open,
+  onClose,
+  onSelect,
+  availableModelIds,
+}: Props) {
   const [step, setStep] = useState<Step>(1);
-  const [selectedIntent, setSelectedIntent] = useState<ModelPickerIntent | null>(null);
+  const [selectedIntent, setSelectedIntent] =
+    useState<ModelPickerIntent | null>(null);
   const [speedPref, setSpeedPref] = useState<SpeedPref>("quality");
   const [privacyPref, setPrivacyPref] = useState<PrivacyPref>("anywhere");
 
@@ -280,7 +311,9 @@ export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }:
     modelPicker
       .getRecommendations()
       .then(setData)
-      .catch(() => {/* silently fall back to static data */})
+      .catch(() => {
+        /* silently fall back to static data */
+      })
       .finally(() => setLoading(false));
   }, [open, data]);
 
@@ -326,10 +359,14 @@ export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }:
                 <p className="text-sm text-[#6F6B66] mt-1">
                   What are you working on?
                   {isLive && (
-                    <span className="ml-1.5 text-xs text-green-600">● live pricing</span>
+                    <span className="ml-1.5 text-xs text-green-600">
+                      ● live pricing
+                    </span>
                   )}
                   {loading && (
-                    <span className="ml-1.5 text-xs text-[#B1ADA1]">loading…</span>
+                    <span className="ml-1.5 text-xs text-[#B1ADA1]">
+                      loading…
+                    </span>
                   )}
                 </p>
               </DialogHeader>
@@ -341,7 +378,7 @@ export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }:
                       setSelectedIntent(intent);
                       setStep(2);
                     }}
-                    className="text-left border border-[#E5E1DB] rounded-xl p-4 hover:border-[#C15F3C] hover:bg-[#FBF8F4] transition-colors group"
+                    className="text-left border border-[#E5E1DB] rounded-xl p-4 hover:border-[#C15F3C] hover:bg-[#FBF8F4] hover:text-[#C15F3C] transition-colors group"
                   >
                     <div className="font-medium text-[#2D2B28] group-hover:text-[#C15F3C] transition-colors mb-2">
                       {intent.label}
@@ -367,7 +404,9 @@ export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }:
                 <BackButton onClick={() => setStep(1)} />
                 <DialogHeader className="flex-1 min-w-0">
                   <DialogTitle>How fast do you need it?</DialogTitle>
-                  <p className="text-sm text-[#6F6B66] mt-0.5">{selectedIntent.label}</p>
+                  <p className="text-sm text-[#6F6B66] mt-0.5">
+                    {selectedIntent.label}
+                  </p>
                 </DialogHeader>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -378,8 +417,18 @@ export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }:
                       label: "Best quality",
                       sub: "I'll wait for a great answer",
                       icon: (
-                        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
                         </svg>
                       ),
                     },
@@ -388,8 +437,18 @@ export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }:
                       label: "Instant",
                       sub: "Fast response, lower latency",
                       icon: (
-                        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
+                          />
                         </svg>
                       ),
                     },
@@ -424,10 +483,14 @@ export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }:
               <div className="flex items-center gap-3 mb-4">
                 <BackButton onClick={() => setStep(2)} />
                 <DialogHeader className="flex-1 min-w-0">
-                  <DialogTitle className="truncate">{selectedIntent.label}</DialogTitle>
+                  <DialogTitle className="truncate">
+                    {selectedIntent.label}
+                  </DialogTitle>
                   <p className="text-sm text-[#6F6B66] mt-0.5">
                     {selectedIntent.tags.difficulty} ·{" "}
-                    {speedPref === "instant" ? "Instant response" : "High quality"}
+                    {speedPref === "instant"
+                      ? "Instant response"
+                      : "High quality"}
                   </p>
                 </DialogHeader>
               </div>
@@ -436,8 +499,14 @@ export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }:
               <div className="flex items-center gap-2 mb-4 p-2 bg-[#F4F3EE] rounded-lg">
                 {(
                   [
-                    { value: "anywhere" as PrivacyPref, label: "Cloud + Local" },
-                    { value: "local-only" as PrivacyPref, label: "Local only (privacy)" },
+                    {
+                      value: "anywhere" as PrivacyPref,
+                      label: "Cloud + Local",
+                    },
+                    {
+                      value: "local-only" as PrivacyPref,
+                      label: "Local only (privacy)",
+                    },
                   ] as const
                 ).map(({ value, label }) => (
                   <button
@@ -459,14 +528,18 @@ export function ModelPickerModal({ open, onClose, onSelect, availableModelIds }:
                 {showCloud && (
                   <CloudCard
                     rec={selectedIntent.cloud}
-                    onSelect={(meta) => handleSelect(selectedIntent.cloud.id, meta)}
+                    onSelect={(meta) =>
+                      handleSelect(selectedIntent.cloud.id, meta)
+                    }
                   />
                 )}
                 {showLocal && selectedIntent.local ? (
                   <LocalCard
                     rec={selectedIntent.local}
                     gpuVramGb={gpuVramGb}
-                    onSelect={(meta) => handleSelect(selectedIntent.local!.id, meta)}
+                    onSelect={(meta) =>
+                      handleSelect(selectedIntent.local!.id, meta)
+                    }
                   />
                 ) : showLocal && !selectedIntent.local ? (
                   <div className="border border-dashed border-[#E5E1DB] rounded-xl p-4 flex items-center justify-center text-center">
