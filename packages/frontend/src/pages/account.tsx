@@ -171,10 +171,9 @@ export function AccountPage() {
   const billingEnabled =
     (health?.integrations?.billing && health?.integrations?.stripe) ?? false;
 
-  // Compute usage statistics from loaded usage data
+  // Compute usage statistics from loaded usage data and backend aggregates
   const usageStats = useMemo(() => {
     let cloudInferenceCost = 0;
-    let localInferenceCost = 0;
     let cloudInferenceCount = 0;
     let localInferenceCount = 0;
     const cloudModelCosts: Record<string, number> = {};
@@ -186,15 +185,15 @@ export function AccountPage() {
         cloudInferenceCount++;
         cloudModelCosts[u.model] = (cloudModelCosts[u.model] || 0) + u.cost_nzd;
       } else {
-        localInferenceCost += u.cost_nzd;
         localInferenceCount++;
       }
     }
 
     const totalKwh = usage.reduce((sum, u) => sum + u.kwh, 0);
-    const inferenceCost = cloudInferenceCost + localInferenceCost;
-    const totalUsed = balance?.total_used_nzd ?? 0;
+    const totalInferenceCost = balance?.total_inference_cost_nzd ?? 0;
     const renderCost = balance?.total_render_cost_nzd ?? 0;
+    // Derive local inference cost from backend total minus visible cloud cost
+    const localInferenceCost = Math.max(0, totalInferenceCost - cloudInferenceCost);
 
     const topCloudModels = Object.entries(cloudModelCosts)
       .sort((a, b) => b[1] - a[1])
@@ -207,9 +206,9 @@ export function AccountPage() {
       cloudInferenceCount,
       localInferenceCount,
       totalKwh,
-      inferenceCost,
+      inferenceCost: totalInferenceCost,
       renderCost,
-      totalUsed,
+      totalUsed: balance?.total_used_nzd ?? 0,
       topCloudModels,
     };
   }, [usage, balance]);
