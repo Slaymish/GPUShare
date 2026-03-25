@@ -80,6 +80,54 @@ function AccountSkeleton() {
   );
 }
 
+interface ChartSegment {
+  label: string;
+  value: number;
+  color: string;
+}
+
+function DonutChart({ segments }: { segments: ChartSegment[] }) {
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+  if (total === 0) return null;
+
+  let accumulated = 0;
+  const gradientParts = segments.map((s) => {
+    const pct = (s.value / total) * 100;
+    const start = accumulated;
+    accumulated += pct;
+    return `${s.color} ${start}% ${accumulated}%`;
+  });
+
+  return (
+    <div
+      className="w-24 h-24 rounded-full flex-shrink-0 flex items-center justify-center"
+      style={{ background: `conic-gradient(${gradientParts.join(", ")})` }}
+    >
+      <div className="w-14 h-14 rounded-full bg-white" />
+    </div>
+  );
+}
+
+function PieChart({ segments }: { segments: ChartSegment[] }) {
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
+  if (total === 0) return null;
+
+  let accumulated = 0;
+  const gradientParts = segments.map((s) => {
+    const pct = (s.value / total) * 100;
+    const start = accumulated;
+    accumulated += pct;
+    return `${s.color} ${start}% ${accumulated}%`;
+  });
+
+  return (
+    <div
+      className="w-24 h-24 rounded-full flex-shrink-0"
+      style={{ background: `conic-gradient(${gradientParts.join(", ")})` }}
+    />
+  );
+}
+
 export function AccountPage() {
   const { trigger } = useWebHaptics();
   const { activeTheme, setActiveTheme } = useTheme();
@@ -125,12 +173,45 @@ export function AccountPage() {
 
   // Compute usage statistics from loaded usage data
   const usageStats = useMemo(() => {
-    const inferenceCount = usage.length;
+    let cloudInferenceCost = 0;
+    let localInferenceCost = 0;
+    let cloudInferenceCount = 0;
+    let localInferenceCount = 0;
+    const cloudModelCosts: Record<string, number> = {};
+
+    for (const u of usage) {
+      const isCloud = u.model.includes("/");
+      if (isCloud) {
+        cloudInferenceCost += u.cost_nzd;
+        cloudInferenceCount++;
+        cloudModelCosts[u.model] = (cloudModelCosts[u.model] || 0) + u.cost_nzd;
+      } else {
+        localInferenceCost += u.cost_nzd;
+        localInferenceCount++;
+      }
+    }
+
     const totalKwh = usage.reduce((sum, u) => sum + u.kwh, 0);
-    const inferenceCost = usage.reduce((sum, u) => sum + u.cost_nzd, 0);
+    const inferenceCost = cloudInferenceCost + localInferenceCost;
     const totalUsed = balance?.total_used_nzd ?? 0;
     const renderCost = Math.max(0, totalUsed - inferenceCost);
-    return { inferenceCount, totalKwh, inferenceCost, renderCost, totalUsed };
+
+    const topCloudModels = Object.entries(cloudModelCosts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    return {
+      inferenceCount: usage.length,
+      cloudInferenceCost,
+      localInferenceCost,
+      cloudInferenceCount,
+      localInferenceCount,
+      totalKwh,
+      inferenceCost,
+      renderCost,
+      totalUsed,
+      topCloudModels,
+    };
   }, [usage, balance]);
 
   function fetchAll() {
@@ -359,11 +440,15 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
   const openCodePsSnippet = `irm ${API_URL}/setup-opencode.ps1 -OutFile setup.ps1; .\\setup.ps1 -Key "${revealedKey}" -Url "${API_URL}"`;
 
   // Donut chart percentages
-  const totalCostForDonut = usageStats.inferenceCost + usageStats.renderCost;
-  const inferencePct =
+  const totalCostForDonut = usageStats.cloudInferenceCost + usageStats.localInferenceCost + usageStats.renderCost;
+  const cloudInferencePct =
     totalCostForDonut > 0
-      ? (usageStats.inferenceCost / totalCostForDonut) * 100
-      : 100;
+      ? (usageStats.cloudInferenceCost / totalCostForDonut) * 100
+      : 0;
+  const localInferencePct =
+    totalCostForDonut > 0
+      ? (usageStats.localInferenceCost / totalCostForDonut) * 100
+      : 0;
   const renderPct =
     totalCostForDonut > 0
       ? (usageStats.renderCost / totalCostForDonut) * 100
@@ -1062,40 +1147,89 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
           />
         </div>
 
-        {/* Donut chart: inference vs render cost split */}
+        {/* Donut chart: cloud inference + local inference + render cost split */}
         {totalCostForDonut > 0 && (
           <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
             <h4 className="text-sm font-medium mb-4">Cost Breakdown</h4>
             <div className="flex items-center gap-6">
-              <div
-                className="w-24 h-24 rounded-full flex-shrink-0 flex items-center justify-center"
-                style={{
-                  background: `conic-gradient(#C15F3C ${inferencePct}%, #5E35B1 ${inferencePct}% 100%)`,
-                }}
-              >
-                <div className="w-14 h-14 rounded-full bg-white" />
-              </div>
+              <DonutChart
+                segments={[
+                  { label: "Cloud Inference", value: usageStats.cloudInferenceCost, color: "#C15F3C" },
+                  { label: "Local Inference", value: usageStats.localInferenceCost, color: "#F59E0B" },
+                  { label: "Render", value: usageStats.renderCost, color: "#5E35B1" },
+                ].filter((s) => s.value > 0)}
+              />
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-[#C15F3C]" />
-                  <span className="text-[#6F6B66]">Inference</span>
-                  <span className="font-medium">
-                    {fmtUsd(usageStats.inferenceCost)}
-                  </span>
-                  <span className="text-[#B1ADA1]">
-                    ({inferencePct.toFixed(1)}%)
-                  </span>
+                  <span className="text-[#6F6B66]">Cloud Inference</span>
+                  <span className="font-medium">{fmtUsd(usageStats.cloudInferenceCost)}</span>
+                  <span className="text-[#B1ADA1]">({cloudInferencePct.toFixed(1)}%)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#F59E0B]" />
+                  <span className="text-[#6F6B66]">Local Inference</span>
+                  <span className="font-medium">{fmtUsd(usageStats.localInferenceCost)}</span>
+                  <span className="text-[#B1ADA1]">({localInferencePct.toFixed(1)}%)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-[#5E35B1]" />
                   <span className="text-[#6F6B66]">Render</span>
-                  <span className="font-medium">
-                    {fmtUsd(usageStats.renderCost)}
-                  </span>
-                  <span className="text-[#B1ADA1]">
-                    ({renderPct.toFixed(1)}%)
-                  </span>
+                  <span className="font-medium">{fmtUsd(usageStats.renderCost)}</span>
+                  <span className="text-[#B1ADA1]">({renderPct.toFixed(1)}%)</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pie chart: top cloud models by cost */}
+        {usageStats.topCloudModels.length > 0 && (
+          <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
+            <h4 className="text-sm font-medium mb-4">Top Cloud Models by Cost</h4>
+            <div className="flex items-center gap-6">
+              <PieChart
+                segments={[
+                  ...usageStats.topCloudModels.map(([model, cost], i) => ({
+                    label: model,
+                    value: cost,
+                    color: ["#C15F3C", "#5E35B1", "#1565C0", "#2E7D32", "#F59E0B"][i],
+                  })),
+                  ...(usageStats.cloudInferenceCost >
+                    usageStats.topCloudModels.reduce((s, [, c]) => s + c, 0)
+                    ? [{
+                        label: "Other",
+                        value: usageStats.cloudInferenceCost -
+                          usageStats.topCloudModels.reduce((s, [, c]) => s + c, 0),
+                        color: "#9CA3AF",
+                      }]
+                    : []),
+                ]}
+              />
+              <div className="space-y-2 text-sm flex-1 min-w-0">
+                {usageStats.topCloudModels.map(([model, cost], i) => {
+                  const pct = usageStats.cloudInferenceCost > 0
+                    ? ((cost / usageStats.cloudInferenceCost) * 100).toFixed(1)
+                    : "0";
+                  return (
+                    <div key={model} className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: ["#C15F3C", "#5E35B1", "#1565C0", "#2E7D32", "#F59E0B"][i] }}
+                      />
+                      <span className="text-[#6F6B66] truncate" title={model}>{model}</span>
+                      <span className="font-medium ml-auto flex-shrink-0">{fmtUsd(cost)}</span>
+                      <span className="text-[#B1ADA1] flex-shrink-0">({pct}%)</span>
+                    </div>
+                  );
+                })}
+                {usageStats.cloudInferenceCost >
+                  usageStats.topCloudModels.reduce((s, [, c]) => s + c, 0) && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full flex-shrink-0 bg-[#9CA3AF]" />
+                    <span className="text-[#6F6B66]">Other</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

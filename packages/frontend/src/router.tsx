@@ -5,6 +5,7 @@ import { ChatPage } from './pages/chat';
 import { RenderPage } from './pages/render';
 import { AccountPage } from './pages/account';
 import { AdminPage } from './pages/admin';
+import { ResetPasswordPage } from './pages/reset-password';
 import { isAuthenticated, parseToken } from './lib/auth';
 
 const rootRoute = createRootRoute({
@@ -63,6 +64,15 @@ const adminRoute = createRoute({
   },
 });
 
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/reset-password',
+  component: ResetPasswordPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: (search.token as string) || '',
+  }),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -70,6 +80,7 @@ const routeTree = rootRoute.addChildren([
   renderRoute,
   accountRoute,
   adminRoute,
+  resetPasswordRoute,
 ]);
 
 export const router = createRouter({ routeTree });

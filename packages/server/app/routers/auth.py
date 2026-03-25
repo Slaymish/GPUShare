@@ -139,7 +139,9 @@ async def get_current_user(
     if x_api_key and (x_api_key.startswith("gpus_sk_") or x_api_key.startswith("gn_")):
         user = await _resolve_api_key(x_api_key)
         if user is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
+            )
         return user
 
     # --- Try Bearer token (API key or JWT) ---
@@ -150,26 +152,32 @@ async def get_current_user(
         if token.startswith("gpus_sk_") or token.startswith("gn_"):
             user = await _resolve_api_key(token)
             if user is None:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
+                )
             return user
 
         # Otherwise, treat as JWT
         try:
             payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[JWT_ALGORITHM])
             sub = payload["sub"]
-            
+
             # Handle guest tokens
             if sub == "guest":
                 return None  # Guest users don't have a User object
-            
+
             user_id = uuid.UUID(sub)
         except (JWTError, KeyError, ValueError):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+            )
 
         result = await db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
         if user is None or user.status != "active":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive"
+            )
         return user
 
     raise HTTPException(
@@ -181,7 +189,9 @@ async def get_current_user(
 async def require_admin(user: User = Depends(get_current_user)) -> User:
     """Dependency that ensures the current user has the admin role."""
     if user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
     return user
 
 
@@ -190,7 +200,9 @@ async def require_admin(user: User = Depends(get_current_user)) -> User:
 # ---------------------------------------------------------------------------
 
 
-@router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 @limiter.limit("5/hour")
 @limiter.limit("2/minute")
 async def signup(
@@ -241,7 +253,9 @@ async def signup(
         email=body.email,
         name=body.name,
         password_hash=pwd_context.hash(body.password),
-        status="active" if (is_first_user or not settings.REQUIRE_APPROVAL) else "pending",
+        status="active"
+        if (is_first_user or not settings.REQUIRE_APPROVAL)
+        else "pending",
         role="admin" if is_first_user else "user",
     )
     db.add(user)
@@ -336,9 +350,12 @@ async def update_me(
     if body.theme is not None:
         valid_themes = {"default", "light", "dark"}
         if body.theme not in valid_themes:
-            raise HTTPException(status_code=400, detail=f"Invalid theme. Must be one of: {', '.join(valid_themes)}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid theme. Must be one of: {', '.join(valid_themes)}",
+            )
         user.theme = body.theme
-    
+
     await db.commit()
     await db.refresh(user)
     return user
@@ -355,33 +372,36 @@ async def request_password_reset(
     """Request a password reset email."""
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
-    
+
     # Always return success to prevent email enumeration
     if not user:
         return {"message": "If that email exists, a reset link has been sent"}
-    
+
     # Generate reset token (valid for 1 hour)
     reset_token = secrets.token_urlsafe(32)
     user.password_reset_token = reset_token
     user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
     await db.commit()
-    
+
     # Send email via Resend
     if settings.RESEND_API_KEY:
         resend.api_key = settings.RESEND_API_KEY
-        reset_url = f"{settings.NODE_NAME}/reset-password?token={reset_token}"
+        frontend_base = settings.FRONTEND_URL or settings.NODE_NAME
+        reset_url = f"{frontend_base.rstrip('/')}/reset-password?token={reset_token}"
         try:
-            resend.Emails.send({
-                "from": "noreply@gpushare.app",
-                "to": user.email,
-                "subject": "Reset your password",
-                "html": f"""<p>Click the link below to reset your password:</p>
+            resend.Emails.send(
+                {
+                    "from": "noreply@gpushare.app",
+                    "to": user.email,
+                    "subject": "Reset your password",
+                    "html": f"""<p>Click the link below to reset your password:</p>
                 <p><a href="{reset_url}">{reset_url}</a></p>
                 <p>This link expires in 1 hour.</p>""",
-            })
+                }
+            )
         except Exception:
             pass  # Silently fail to prevent information leakage
-    
+
     return {"message": "If that email exists, a reset link has been sent"}
 
 
@@ -398,16 +418,16 @@ async def confirm_password_reset(
         )
     )
     user = result.scalar_one_or_none()
-    
+
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
-    
+
     # Update password and clear reset token
     user.password_hash = pwd_context.hash(body.password)
     user.password_reset_token = None
     user.password_reset_expires = None
     await db.commit()
-    
+
     return {"message": "Password reset successful"}
 
 
@@ -440,7 +460,11 @@ async def update_my_limit(
     return {"hard_limit_nzd": float(user.hard_limit_nzd)}
 
 
-@router.post("/api-keys", response_model=ApiKeyCreateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/api-keys",
+    response_model=ApiKeyCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_api_key(
     body: ApiKeyCreateRequest,
     user: User = Depends(get_current_user),
@@ -503,7 +527,9 @@ async def revoke_api_key(
     api_key = result.scalar_one_or_none()
 
     if api_key is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="API key not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="API key not found"
+        )
 
     api_key.revoked_at = datetime.now(timezone.utc)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

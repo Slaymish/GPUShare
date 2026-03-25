@@ -17,6 +17,9 @@ export function LoginPage() {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   async function handleGuestLogin() {
     setError("");
@@ -31,6 +34,22 @@ export function LoginPage() {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setGuestLoading(false);
+    }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setResetLoading(true);
+    try {
+      await authApi.requestPasswordReset(email);
+      trigger("success");
+      setResetEmailSent(true);
+    } catch (err) {
+      trigger("error");
+      setError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -81,11 +100,11 @@ export function LoginPage() {
         </div>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={forgotPassword ? handleForgotPassword : handleSubmit}
           className="bg-white rounded-xl p-6 space-y-4 border border-[#E5E1DB] shadow-sm"
         >
           <h2 className="text-lg font-semibold text-[#2D2B28]">
-            {isSignup ? "Create Account" : "Sign In"}
+            {forgotPassword ? "Reset Password" : isSignup ? "Create Account" : "Sign In"}
           </h2>
 
           {error && (
@@ -99,6 +118,39 @@ export function LoginPage() {
               {notice}
             </div>
           )}
+
+          {resetEmailSent && (
+            <div className="bg-[#E8F5E9] border border-[#C8E6C9] text-[#2E7D32] text-sm rounded-lg p-3">
+              If that email exists, a reset link has been sent. Check your inbox.
+            </div>
+          )}
+
+          {forgotPassword ? (
+            <>
+              <div>
+                <label className="block text-sm text-[#6F6B66] mb-1">Email</label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              <Button type="submit" disabled={resetLoading || resetEmailSent} className="w-full" size="lg">
+                {resetLoading ? "Sending..." : "Send Reset Link"}
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => { setForgotPassword(false); setError(""); setResetEmailSent(false); }}
+                variant="ghost"
+                className="w-full"
+              >
+                Back to sign in
+              </Button>
+            </>
+          ) : (<>
 
           {isSignup && (
             <div>
@@ -170,6 +222,18 @@ export function LoginPage() {
               ? "Already have an account? Sign in"
               : "Don't have an account? Sign up"}
           </Button>
+
+          {!isSignup && (
+            <Button
+              type="button"
+              onClick={() => { setForgotPassword(true); setError(""); setResetEmailSent(false); }}
+              variant="ghost"
+              className="w-full text-sm"
+            >
+              Forgot password?
+            </Button>
+          )}
+          </>)}
         </form>
 
         <div className="mt-4">

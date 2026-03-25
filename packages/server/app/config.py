@@ -28,8 +28,12 @@ class Settings(BaseSettings):
     CLOUDFLARE_R2_BUCKET: str = "gpu-node-files"
     RESEND_API_KEY: str = ""
     OPENROUTER_API_KEY: str = ""
-    OPENROUTER_MODELS: str = ""  # comma-separated, e.g. "openai/gpt-4o,anthropic/claude-sonnet-4"
-    ARTIFICIAL_ANALYSIS_API_KEY: str = ""  # optional: enables live benchmark scores in model picker
+    OPENROUTER_MODELS: str = (
+        ""  # comma-separated, e.g. "openai/gpt-4o,anthropic/claude-sonnet-4"
+    )
+    ARTIFICIAL_ANALYSIS_API_KEY: str = (
+        ""  # optional: enables live benchmark scores in model picker
+    )
 
     # ── Services & compute ───────────────────────────────────────────────
     SERVICES_ENABLED: str = "inference,render"
@@ -55,6 +59,9 @@ class Settings(BaseSettings):
     INVITE_ONLY: bool = True
     REQUIRE_APPROVAL: bool = True
     NODE_NAME: str = "My GPU Node"
+    FRONTEND_URL: str = (
+        ""  # e.g. https://gpu-share.vercel.app — used for password reset links
+    )
     INITIAL_ADMIN_BOOTSTRAP_TOKEN: str = ""
 
     # ── Tapo smart plug (energy monitoring) ──────────────────────────────

@@ -1,5 +1,8 @@
 {
   "rewrites": [
+    { "source": "/v1/(.*)", "destination": "https://gpu.hamishburke.dev/v1/$1" },
+    { "source": "/api/(.*)", "destination": "https://gpu.hamishburke.dev/api/$1" },
+    { "source": "/health", "destination": "https://gpu.hamishburke.dev/health" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
