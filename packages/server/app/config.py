@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     # ── Skills ────────────────────────────────────────────────────────────
     SKILLS_DIR: str = "skills"
 
+    # ── CORS ─────────────────────────────────────────────────────────────
+    # Extra comma-separated origins to allow (in addition to the built-in defaults).
+    # Example: CORS_ORIGINS=https://my-app.vercel.app,https://staging.example.com
+    CORS_ORIGINS: str = ""
+
     # ── Cloudflare Tunnel ────────────────────────────────────────────────
     TUNNEL_TOKEN: str = ""
 
