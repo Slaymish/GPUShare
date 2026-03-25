@@ -202,6 +202,19 @@ pnpm db:migrate       # run migrations
 pnpm db:revision      # create new migration
 ```
 
+## Contributing
+
+I would love help! Check out:
+- [Roadmap & feature requests](https://github.com/Slaymish/GPUShare/discussions)
+- [Development setup guide](CONTRIBUTING.md)
+
+**Current priorities:**
+- [ ] NVIDIA GPU monitoring dashboard
+- [ ] AMD GPU support
+- [ ] Automatic job scheduling
+- [ ] Mobile app
+- [ ] One-click Windows installer
+
 ## License
 
 MIT
