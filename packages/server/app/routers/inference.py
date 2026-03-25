@@ -54,27 +54,52 @@ def _extract_text(content: str | list) -> str:
 
 def _to_ollama_message(m) -> dict:
     """Convert a ChatMessage to Ollama API format (images array for vision)."""
+    msg: dict = {"role": m.role}
+
     if isinstance(m.content, str):
-        return {"role": m.role, "content": m.content}
-    from app.schemas.inference import ContentPart
-    text_parts = [p.text for p in m.content if isinstance(p, ContentPart) and p.type == "text" and p.text]
-    images = []
-    for p in m.content:
-        if isinstance(p, ContentPart) and p.type == "image_url" and p.image_url:
-            url = p.image_url.get("url", "")
-            if "," in url:
-                images.append(url.split(",", 1)[1])
-    msg: dict = {"role": m.role, "content": " ".join(text_parts)}
-    if images:
-        msg["images"] = images
+        msg["content"] = m.content
+    elif m.content is not None:
+        from app.schemas.inference import ContentPart
+        text_parts = [p.text for p in m.content if isinstance(p, ContentPart) and p.type == "text" and p.text]
+        images = []
+        for p in m.content:
+            if isinstance(p, ContentPart) and p.type == "image_url" and p.image_url:
+                url = p.image_url.get("url", "")
+                if "," in url:
+                    images.append(url.split(",", 1)[1])
+        msg["content"] = " ".join(text_parts)
+        if images:
+            msg["images"] = images
+    else:
+        msg["content"] = ""
+
+    # Tool call fields
+    if m.tool_calls:
+        msg["tool_calls"] = [tc.model_dump() for tc in m.tool_calls]
+    if m.tool_call_id:
+        msg["tool_call_id"] = m.tool_call_id
     return msg
 
 
 def _to_openrouter_message(m) -> dict:
     """Convert a ChatMessage to OpenRouter/OpenAI API format (content parts)."""
+    msg: dict = {"role": m.role}
+
     if isinstance(m.content, str):
-        return {"role": m.role, "content": m.content}
-    return {"role": m.role, "content": [p.model_dump(exclude_none=True) for p in m.content]}
+        msg["content"] = m.content
+    elif m.content is not None:
+        msg["content"] = [p.model_dump(exclude_none=True) for p in m.content]
+    else:
+        msg["content"] = None
+
+    # Tool call fields
+    if m.tool_calls:
+        msg["tool_calls"] = [tc.model_dump() for tc in m.tool_calls]
+    if m.tool_call_id:
+        msg["tool_call_id"] = m.tool_call_id
+    if m.name:
+        msg["name"] = m.name
+    return msg
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +181,10 @@ async def create_chat_completion(
         body = body.model_copy(update={"model": resolved_model})
 
     use_openrouter = is_openrouter_model(body.model) and settings.OPENROUTER_API_KEY
+
+    # Serialize tools for the downstream API
+    tools_dicts = [t.model_dump() for t in body.tools] if body.tools else None
+
     if use_openrouter:
         messages = [_to_openrouter_message(m) for m in body.messages]
     else:
@@ -173,6 +202,8 @@ async def create_chat_completion(
                 db=db,
                 use_openrouter=bool(use_openrouter),
                 queue_entry=None if use_openrouter else QueueEntry(),
+                tools=tools_dicts,
+                tool_choice=body.tool_choice,
             ),
             media_type="text/event-stream",
         )
@@ -182,11 +213,15 @@ async def create_chat_completion(
         result = await openrouter_chat(
             model=body.model, messages=messages,
             temperature=body.temperature, max_tokens=body.max_tokens,
+            tools=tools_dicts, tool_choice=body.tool_choice,
         )
-        assistant_content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        resp_message = result.get("choices", [{}])[0].get("message", {})
+        assistant_content = resp_message.get("content", "")
+        resp_tool_calls = resp_message.get("tool_calls")
+        resp_finish_reason = result.get("choices", [{}])[0].get("finish_reason", "stop")
         # OpenRouter returns usage in the response
         usage = result.get("usage", {})
-        output_tokens = usage.get("completion_tokens", count_tokens(assistant_content))
+        output_tokens = usage.get("completion_tokens", count_tokens(assistant_content or ""))
         input_tokens = usage.get("prompt_tokens", input_tokens)
     else:
         entry = QueueEntry()
@@ -195,11 +230,37 @@ async def create_chat_completion(
             result = await ollama_chat(
                 model=body.model, messages=messages,
                 temperature=body.temperature, max_tokens=body.max_tokens,
+                tools=tools_dicts,
             )
         finally:
             gpu_queue.release(entry)
-        assistant_content = result.get("message", {}).get("content", "")
-        output_tokens = count_tokens(assistant_content)
+        resp_message = result.get("message", {})
+        assistant_content = resp_message.get("content", "")
+        resp_tool_calls = resp_message.get("tool_calls")
+        resp_finish_reason = "stop"
+        output_tokens = count_tokens(assistant_content or "")
+
+    # Build the assistant message with optional tool_calls
+    assistant_msg = ChatMessage(role="assistant", content=assistant_content or None)
+    if resp_tool_calls:
+        from app.schemas.inference import ToolCall, ToolCallFunction
+        parsed_tool_calls = []
+        for i, tc in enumerate(resp_tool_calls):
+            func = tc.get("function", {})
+            # Ollama returns arguments as a dict, OpenAI format expects a JSON string
+            args = func.get("arguments", "{}")
+            if isinstance(args, dict):
+                args = json.dumps(args)
+            parsed_tool_calls.append(ToolCall(
+                id=tc.get("id", f"call_{uuid.uuid4().hex[:24]}"),
+                type=tc.get("type", "function"),
+                function=ToolCallFunction(
+                    name=func.get("name", ""),
+                    arguments=args,
+                ),
+            ))
+        assistant_msg.tool_calls = parsed_tool_calls
+        resp_finish_reason = "tool_calls"
 
     # Calculate cost and record usage
     cost, kwh = await _calculate_cost(body.model, input_tokens, output_tokens, use_openrouter=bool(use_openrouter))
@@ -233,8 +294,8 @@ async def create_chat_completion(
         choices=[
             ChatCompletionChoice(
                 index=0,
-                message=ChatMessage(role="assistant", content=assistant_content),
-                finish_reason="stop",
+                message=assistant_msg,
+                finish_reason=resp_finish_reason,
             )
         ],
         usage=UsageInfo(
@@ -272,6 +333,8 @@ async def _stream_response(
     db: AsyncSession,
     use_openrouter: bool = False,
     queue_entry: QueueEntry | None = None,
+    tools: list[dict] | None = None,
+    tool_choice: str | dict | None = None,
 ) -> AsyncGenerator[str, None]:
     """Generate SSE chunks for a streaming chat completion."""
     settings = get_settings()
@@ -306,29 +369,71 @@ async def _stream_response(
         # --- Stream the completion ---
         stream_fn = openrouter_stream if use_openrouter else ollama_stream
 
+        stream_kwargs: dict = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if tools:
+            stream_kwargs["tools"] = tools
+        if use_openrouter and tool_choice is not None:
+            stream_kwargs["tool_choice"] = tool_choice
+
         try:
-            async for chunk in stream_fn(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            ):
+            async for chunk in stream_fn(**stream_kwargs):
                 if use_openrouter:
                     # Capture usage from the final chunk (sent when stream_options.include_usage is set)
                     usage = chunk.get("usage")
                     if usage:
                         or_prompt_tokens = usage.get("prompt_tokens")
                         or_completion_tokens = usage.get("completion_tokens")
-                    content = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                    delta = chunk.get("choices", [{}])[0].get("delta", {})
+                    content = delta.get("content", "")
                     done = chunk.get("choices", [{}])[0].get("finish_reason") is not None
+                    finish_reason_raw = chunk.get("choices", [{}])[0].get("finish_reason")
                 else:
                     content = chunk.get("message", {}).get("content", "")
                     done = chunk.get("done", False)
+                    delta = {}
+                    finish_reason_raw = None
 
                 if content:
                     collected_content += content
 
-                finish_reason = "stop" if done else None
+                finish_reason = finish_reason_raw if done else None
+
+                # Build the delta object
+                sse_delta: dict = {}
+                if content:
+                    sse_delta["content"] = content
+                # Pass through tool_calls from OpenRouter streaming deltas
+                if use_openrouter and "tool_calls" in delta:
+                    sse_delta["tool_calls"] = delta["tool_calls"]
+                    if finish_reason is None:
+                        pass  # tool_calls can span multiple chunks
+                # For Ollama non-streaming tool_calls in final chunk
+                if not use_openrouter and done:
+                    msg = chunk.get("message", {})
+                    if "tool_calls" in msg and msg["tool_calls"]:
+                        # Convert Ollama tool_calls to OpenAI format
+                        tc_list = []
+                        for i, tc in enumerate(msg["tool_calls"]):
+                            func = tc.get("function", {})
+                            args = func.get("arguments", "{}")
+                            if isinstance(args, dict):
+                                args = json.dumps(args)
+                            tc_list.append({
+                                "index": i,
+                                "id": f"call_{uuid.uuid4().hex[:24]}",
+                                "type": "function",
+                                "function": {
+                                    "name": func.get("name", ""),
+                                    "arguments": args,
+                                },
+                            })
+                        sse_delta["tool_calls"] = tc_list
+                        finish_reason = "tool_calls"
 
                 sse_chunk = {
                     "id": completion_id,
@@ -338,7 +443,7 @@ async def _stream_response(
                     "choices": [
                         {
                             "index": 0,
-                            "delta": {"content": content} if content else {},
+                            "delta": sse_delta,
                             "finish_reason": finish_reason,
                         }
                     ],

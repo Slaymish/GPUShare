@@ -43,6 +43,7 @@ async def chat_completion(
     stream: bool = False,
     temperature: float | None = None,
     max_tokens: int | None = None,
+    tools: list[dict] | None = None,
 ) -> dict:
     """Non-streaming chat completion. Returns Ollama response dict."""
     settings = get_settings()
@@ -52,6 +53,8 @@ async def chat_completion(
         "stream": False,
         "keep_alive": settings.OLLAMA_KEEP_ALIVE,
     }
+    if tools:
+        payload["tools"] = tools
     options = {}
     if temperature is not None:
         options["temperature"] = temperature
@@ -76,6 +79,7 @@ async def chat_completion_stream(
     messages: list[dict],
     temperature: float | None = None,
     max_tokens: int | None = None,
+    tools: list[dict] | None = None,
 ) -> AsyncGenerator[dict, None]:
     """Streaming chat completion. Yields Ollama response chunks."""
     settings = get_settings()
@@ -85,6 +89,8 @@ async def chat_completion_stream(
         "stream": True,
         "keep_alive": settings.OLLAMA_KEEP_ALIVE,
     }
+    if tools:
+        payload["tools"] = tools
     options = {}
     if temperature is not None:
         options["temperature"] = temperature

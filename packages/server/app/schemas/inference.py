@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -11,9 +13,34 @@ class ContentPart(BaseModel):
     image_url: dict | None = None
 
 
+class ToolCallFunction(BaseModel):
+    name: str
+    arguments: str  # JSON-encoded string
+
+
+class ToolCall(BaseModel):
+    id: str
+    type: str = "function"
+    function: ToolCallFunction
+
+
 class ChatMessage(BaseModel):
     role: str
-    content: list[ContentPart] | str  # list first so JSON arrays match without coercion
+    content: list[ContentPart] | str | None = None
+    tool_calls: list[ToolCall] | None = None
+    tool_call_id: str | None = None
+    name: str | None = None
+
+
+class FunctionDefinition(BaseModel):
+    name: str
+    description: str | None = None
+    parameters: dict[str, Any] | None = None
+
+
+class ToolDefinition(BaseModel):
+    type: str = "function"
+    function: FunctionDefinition
 
 
 class ChatCompletionRequest(BaseModel):
@@ -22,6 +49,8 @@ class ChatCompletionRequest(BaseModel):
     stream: bool = False
     temperature: float | None = None
     max_tokens: int | None = None
+    tools: list[ToolDefinition] | None = None
+    tool_choice: str | dict | None = None
 
 
 class ChatCompletionChoice(BaseModel):
@@ -37,6 +66,8 @@ class UsageInfo(BaseModel):
 
 
 class ChatCompletionResponse(BaseModel):
+    model_config = ConfigDict(exclude_none=True)
+
     id: str
     object: str = "chat.completion"
     created: int

@@ -42,6 +42,8 @@ async def chat_completion(
     messages: list[dict],
     temperature: float | None = None,
     max_tokens: int | None = None,
+    tools: list[dict] | None = None,
+    tool_choice: str | dict | None = None,
 ) -> dict:
     """Non-streaming chat completion via OpenRouter. Returns OpenAI-format response."""
     settings = get_settings()
@@ -59,6 +61,10 @@ async def chat_completion(
         payload["temperature"] = temperature
     if max_tokens is not None:
         payload["max_tokens"] = max_tokens
+    if tools:
+        payload["tools"] = tools
+    if tool_choice is not None:
+        payload["tool_choice"] = tool_choice
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(f"{OPENROUTER_BASE}/chat/completions", json=payload, headers=headers)
@@ -74,6 +80,8 @@ async def chat_completion_stream(
     messages: list[dict],
     temperature: float | None = None,
     max_tokens: int | None = None,
+    tools: list[dict] | None = None,
+    tool_choice: str | dict | None = None,
 ) -> AsyncGenerator[dict, None]:
     """Streaming chat completion via OpenRouter. Yields OpenAI-format SSE chunks."""
     settings = get_settings()
@@ -92,6 +100,10 @@ async def chat_completion_stream(
         payload["temperature"] = temperature
     if max_tokens is not None:
         payload["max_tokens"] = max_tokens
+    if tools:
+        payload["tools"] = tools
+    if tool_choice is not None:
+        payload["tool_choice"] = tool_choice
 
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream("POST", f"{OPENROUTER_BASE}/chat/completions", json=payload, headers=headers) as resp:
