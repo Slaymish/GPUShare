@@ -44,13 +44,17 @@ app = FastAPI(
 app.state.limiter = auth.limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+_default_origins = [
+    "https://gpu-share.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+_extra_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+_allowed_origins = _default_origins + _extra_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://gpu-share.vercel.app",
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

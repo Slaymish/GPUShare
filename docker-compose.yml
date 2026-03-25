@@ -33,6 +33,7 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    network_mode: host
     depends_on:
       - fastapi
     restart: unless-stopped
