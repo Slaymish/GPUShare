@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -67,6 +70,27 @@ app.include_router(admin.router)
 app.include_router(invite.router)
 app.include_router(skills.router)
 app.include_router(model_picker.router)
+
+
+_SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
+
+
+@app.get("/setup-opencode.sh", response_class=PlainTextResponse, tags=["setup"])
+async def setup_opencode_bash():
+    """Serve the OpenCode setup script for Linux/macOS."""
+    return PlainTextResponse(
+        (_SCRIPTS_DIR / "setup-opencode.sh").read_text(),
+        media_type="text/x-shellscript",
+    )
+
+
+@app.get("/setup-opencode.ps1", response_class=PlainTextResponse, tags=["setup"])
+async def setup_opencode_powershell():
+    """Serve the OpenCode setup script for Windows."""
+    return PlainTextResponse(
+        (_SCRIPTS_DIR / "setup-opencode.ps1").read_text(),
+        media_type="text/plain",
+    )
 
 
 @app.get("/health")

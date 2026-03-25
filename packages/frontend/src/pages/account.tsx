@@ -112,7 +112,7 @@ export function AccountPage() {
   );
   const [dismissed, setDismissed] = useState(false);
   const [guideTab, setGuideTab] = useState<
-    "curl" | "python" | "claude-code" | "openclaw"
+    "curl" | "python" | "claude-code" | "openclaw" | "opencode"
   >("curl");
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
@@ -353,6 +353,10 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
     null,
     2,
   );
+
+  const openCodeBashSnippet = `curl -fsSL ${API_URL}/setup-opencode.sh | bash -s -- --key "${revealedKey}" --url "${API_URL}"`;
+
+  const openCodePsSnippet = `irm ${API_URL}/setup-opencode.ps1 -OutFile setup.ps1; .\\setup.ps1 -Key "${revealedKey}" -Url "${API_URL}"`;
 
   // Donut chart percentages
   const totalCostForDonut = usageStats.inferenceCost + usageStats.renderCost;
@@ -763,6 +767,7 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                     { key: "python", label: "Python" },
                     { key: "claude-code", label: "Claude Code" },
                     { key: "openclaw", label: "OpenClaw" },
+                    { key: "opencode", label: "OpenCode" },
                   ] as const
                 ).map((tab) => (
                   <button
@@ -894,6 +899,64 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
                       >
                         View Setup Guide
                       </a>
+                    </div>
+                  </div>
+                )}
+
+                {guideTab === "opencode" && (
+                  <div className="bg-white border border-[#E5E1DB] rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-medium">OpenCode</span>
+                    </div>
+                    <p className="text-xs text-[#6F6B66] mb-2">
+                      One-command setup. Installs OpenCode and configures it
+                      with GPUShare smart auto-routing.
+                    </p>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs font-medium text-[#2D2B28] mb-1">
+                          Linux / macOS
+                        </p>
+                        <pre className="bg-[#F4F3EE] border border-[#E5E1DB] rounded-lg p-3 text-xs text-[#2D2B28] overflow-x-auto whitespace-pre-wrap">
+                          {openCodeBashSnippet}
+                        </pre>
+                        <Button
+                          onClick={() => {
+                            navigator.clipboard.writeText(openCodeBashSnippet);
+                            trigger("nudge");
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-xs"
+                        >
+                          Copy Bash Command
+                        </Button>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-[#2D2B28] mb-1">
+                          Windows PowerShell
+                        </p>
+                        <pre className="bg-[#F4F3EE] border border-[#E5E1DB] rounded-lg p-3 text-xs text-[#2D2B28] overflow-x-auto whitespace-pre-wrap">
+                          {openCodePsSnippet}
+                        </pre>
+                        <Button
+                          onClick={() => {
+                            navigator.clipboard.writeText(openCodePsSnippet);
+                            trigger("nudge");
+                          }}
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-xs"
+                        >
+                          Copy PowerShell Command
+                        </Button>
+                      </div>
+                      <p className="text-xs text-[#6F6B66]">
+                        Uses the "auto" model — routes simple prompts to fast
+                        local models and complex tasks to powerful models. Type{" "}
+                        <code className="bg-[#F4F3EE] px-1 rounded">/models</code>{" "}
+                        inside OpenCode to switch models manually.
+                      </p>
                     </div>
                   </div>
                 )}

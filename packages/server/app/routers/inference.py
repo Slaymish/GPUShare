@@ -78,6 +78,53 @@ def _to_openrouter_message(m) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Auto-model routing
+# ---------------------------------------------------------------------------
+
+AUTO_TOKEN_THRESHOLD = 2000
+
+
+async def _resolve_auto_model(input_tokens: int) -> tuple[str, bool]:
+    """Pick a real model when the user requests 'auto'.
+
+    Returns (model_name, use_openrouter).
+    Small prompts (< threshold) → lightest local model.
+    Large prompts (>= threshold) → heaviest local model or first OpenRouter model.
+    """
+    settings = get_settings()
+
+    try:
+        local_models = await ollama_list_models()
+    except Exception:
+        local_models = []
+
+    or_models: list[dict] = []
+    if settings.OPENROUTER_API_KEY:
+        try:
+            or_models = await openrouter_list_models()
+        except Exception:
+            pass
+
+    if input_tokens < AUTO_TOKEN_THRESHOLD:
+        # Light: prefer first (smallest) local model
+        if local_models:
+            return local_models[0], False
+        if or_models:
+            return or_models[0]["id"], True
+    else:
+        # Heavy: prefer OpenRouter if available, else largest local model
+        if or_models:
+            return or_models[0]["id"], True
+        if local_models:
+            return local_models[-1], False
+
+    # Fallback
+    if local_models:
+        return local_models[0], False
+    raise HTTPException(status_code=503, detail="No models available for auto routing")
+
+
+# ---------------------------------------------------------------------------
 # POST /chat/completions
 # ---------------------------------------------------------------------------
 
@@ -102,6 +149,11 @@ async def create_chat_completion(
     # Count input tokens (text parts only)
     input_text = " ".join(_extract_text(m.content) for m in body.messages)
     input_tokens = count_tokens(input_text)
+
+    # Resolve "auto" to a real model
+    if body.model == "auto":
+        resolved_model, _ = await _resolve_auto_model(input_tokens)
+        body = body.model_copy(update={"model": resolved_model})
 
     use_openrouter = is_openrouter_model(body.model) and settings.OPENROUTER_API_KEY
     if use_openrouter:
@@ -347,6 +399,15 @@ async def list_models(
     """Return only models that are actually available (local + OpenRouter)."""
     settings = get_settings()
     models: list[ModelInfo] = []
+
+    # Virtual "auto" model — smart routing (always first)
+    models.append(ModelInfo(
+        id="auto",
+        owned_by="gpushare",
+        cost_per_million_tokens=0,
+        loaded=True,
+        vision_support=False,
+    ))
 
     # Local Ollama models — only those actually loaded
     try:
