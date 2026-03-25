@@ -164,11 +164,7 @@ cloudflared tunnel run gpushare
 
 **4. Deploy the frontend**
 
-Connect the repo to Vercel, set the root directory to `packages/frontend`, and add:
-
-```
-VITE_API_URL=https://gpu.yourdomain.com
-```
+Connect the repo to Vercel and set the root directory to `packages/frontend`. No environment variables needed — `vercel.json` proxies `/v1/*` and `/health` requests to your server automatically.
 
 **5. Point Stripe webhooks (if using Stripe)**
 

@@ -92,8 +92,9 @@ docker compose --profile tunnel up -d
 Deploy `packages/frontend` to [Vercel](https://vercel.com/new):
 
 1. Import the repo and set **Root Directory** to `packages/frontend`
-2. Add environment variable: `VITE_API_URL` = your tunnel URL
-3. Deploy
+2. Deploy
+
+No environment variables needed — `vercel.json` proxies `/v1/*` and `/health` requests to your server automatically, so CORS is handled server-side.
 
 ### 6. Create your admin account
 
