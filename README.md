@@ -1,6 +1,30 @@
 # GPUShare
 
-If you have a gaming or workstation GPU sitting idle most of the day, this lets you share it with a small group of trusted people — friends, family, teammates — and have them pay you back for the electricity they use.
+![GitHub stars](https://img.shields.io/github/stars/Slaymish/GPUShare?style=social)
+![License](https://img.shields.io/github/license/Slaymish/GPUShare)
+![Docker](https://img.shields.io/badge/docker-ready-blue)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+
+> Turn your idle gaming GPU into a private AI & rendering server for friends and family — they only pay for electricity used.
+
+[**Demo**](#) | [**Quick Start**](#quick-start) | [**Documentation**](https://github.com/Slaymish/GPUShare/wiki) 
+
+![GPUShare Dashboard Screenshot](screenshot.png)
+
+## Why GPUShare?
+
+- **🔌 Fair pricing**: Users only pay actual electricity costs — no cloud markups
+- **🔒 Privacy first**: Your data never leaves the trusted group
+- **⚡ Zero waste**: That RTX 4090 mining dust? Now it's serving AI models
+- **🎮 Keep gaming**: Pause jobs instantly when you need your GPU back
+- **💳 No vendor lock-in**: Works with Ollama, OpenRouter, standard Blender
+
+### Who is this for?
+- **Indie teams** sharing a workstation GPU for development
+- **Friends** splitting the cost of AI experiments
+- **Families** with one powerful PC serving everyone's needs
+- **Students** pooling resources for coursework
+
 
 It runs two services off your GPU:
 
@@ -13,12 +37,6 @@ Costs are derived from your actual electricity rate and GPU wattage. You set `EL
 
 Users get a credit balance. They top up via Stripe (or you manually adjust their balance), use inference/rendering, and get a monthly invoice for what they owe. You're not making a business out of this — you're just not subsidising other people's GPU time.
 
-## What your users get
-
-- A chat interface to run local Ollama models or any OpenRouter cloud model
-- An OpenAI-compatible API they can point any client at (same path, same format)
-- Blender render job submission with file delivery via signed R2 URLs
-- A balance/invoice dashboard
 
 ## What you need
 
