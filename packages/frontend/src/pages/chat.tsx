@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useWebHaptics } from "../lib/haptics";
-import { inference, skills as skillsApi, getHealth } from "../lib/api";
-import type { ChatMessage, ContentPart } from "@shared/types/inference";
+import { inference, skills as skillsApi, getHealth, mcpServers } from "../lib/api";
+import type { ChatMessage, ContentPart, ToolCall, ToolDefinition } from "@shared/types/inference";
 import type { ModelInfo } from "@shared/types/inference";
+import type { McpToolInfo } from "@shared/types/mcp";
 import type { SkillSummary, SkillDetail } from "@shared/types/skills";
 import {
   Button,
@@ -147,6 +148,9 @@ export function ChatPage() {
   >({});
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [mcpTools, setMcpTools] = useState<McpToolInfo[]>([]);
+  const [mcpEnabled, setMcpEnabled] = useState(true);
+  const [executingTools, setExecutingTools] = useState<string[]>([]);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -182,6 +186,11 @@ export function ChatPage() {
     skillsApi
       .list()
       .then(setSkillCatalog)
+      .catch(() => {});
+    // Load MCP tools
+    mcpServers
+      .listTools()
+      .then((res) => setMcpTools(res.tools || []))
       .catch(() => {});
   }, []);
 
@@ -423,37 +432,184 @@ export function ChatPage() {
     setLastElapsedSeconds(null);
     setLastTokenCount(null);
 
+    // Build tool definitions from MCP tools
+    const toolDefs: ToolDefinition[] | undefined =
+      mcpEnabled && mcpTools.length > 0
+        ? mcpTools.map((t) => ({
+            type: "function" as const,
+            function: {
+              name: `${t.server_name}__${t.name}`,
+              description: t.description || undefined,
+              parameters: (t.parameters as Record<string, unknown>) || undefined,
+            },
+          }))
+        : undefined;
+
+    // Tool call loop: stream response, execute tool calls, repeat
+    let conversationMessages = [...messagesToSend];
+    let loopMessages = [...updatedMessages];
+    const MAX_TOOL_ROUNDS = 10;
+
     try {
-      let fullContent = "";
       let tokenCount = 0;
-      const stream = inference.chatCompletionStream({
-        model: selectedModel,
-        messages: messagesToSend,
-        stream: true,
-      });
 
-      for await (const chunk of stream) {
-        if ("queue_position" in chunk) {
-          setQueuePosition(chunk.queue_position);
-          continue;
-        }
-        setQueuePosition(null);
+      for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+        let fullContent = "";
+        let pendingToolCalls: ToolCall[] = [];
+        // Track tool calls being assembled from stream deltas
+        const toolCallAccumulator: Record<number, { id: string; name: string; arguments: string }> = {};
 
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          fullContent += delta;
-          tokenCount += 1;
-          const content = fullContent;
-          updateChat(chatId!, (c) => ({
-            ...c,
-            messages: [...updatedMessages, { role: "assistant", content }],
-          }));
+        const stream = inference.chatCompletionStream({
+          model: selectedModel,
+          messages: conversationMessages,
+          stream: true,
+          ...(toolDefs ? { tools: toolDefs } : {}),
+        });
+
+        for await (const chunk of stream) {
+          if ("queue_position" in chunk) {
+            setQueuePosition(chunk.queue_position);
+            continue;
+          }
+          setQueuePosition(null);
+
+          const choice = chunk.choices[0];
+          const delta = choice?.delta;
+
+          // Accumulate text content
+          if (delta?.content) {
+            fullContent += delta.content;
+            tokenCount += 1;
+            const content = fullContent;
+            updateChat(chatId!, (c) => ({
+              ...c,
+              messages: [...loopMessages, { role: "assistant", content }],
+            }));
+          }
+
+          // Accumulate tool calls from stream
+          if (delta?.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index;
+              if (!toolCallAccumulator[idx]) {
+                toolCallAccumulator[idx] = {
+                  id: tc.id || `call_${Date.now()}_${idx}`,
+                  name: tc.function?.name || "",
+                  arguments: "",
+                };
+              }
+              if (tc.id) toolCallAccumulator[idx].id = tc.id;
+              if (tc.function?.name) toolCallAccumulator[idx].name = tc.function.name;
+              if (tc.function?.arguments) toolCallAccumulator[idx].arguments += tc.function.arguments;
+            }
+          }
+
+          // Capture usage from the final chunk
+          if ((chunk as any).usage?.completion_tokens) {
+            tokenCount = (chunk as any).usage.completion_tokens;
+          }
         }
 
-        // Capture usage from the final chunk if available
-        if ((chunk as any).usage?.completion_tokens) {
-          tokenCount = (chunk as any).usage.completion_tokens;
+        // Convert accumulated tool calls to proper format
+        pendingToolCalls = Object.values(toolCallAccumulator).map((tc) => ({
+          id: tc.id,
+          type: "function",
+          function: { name: tc.name, arguments: tc.arguments },
+        }));
+
+        // If no tool calls, we're done
+        if (pendingToolCalls.length === 0) {
+          break;
         }
+
+        // Add assistant message with tool calls to conversation
+        const assistantMsg: ChatMessage = {
+          role: "assistant",
+          content: fullContent || "",
+          tool_calls: pendingToolCalls,
+        };
+        loopMessages = [...loopMessages, assistantMsg];
+        conversationMessages = [...conversationMessages, assistantMsg];
+
+        // Show tool execution status
+        updateChat(chatId!, (c) => ({
+          ...c,
+          messages: [...loopMessages, { role: "assistant", content: "" }],
+        }));
+
+        // Execute each tool call
+        for (const tc of pendingToolCalls) {
+          const funcName = tc.function.name;
+          // Parse server_name__tool_name format
+          const sepIdx = funcName.indexOf("__");
+          if (sepIdx < 0) continue;
+
+          const serverName = funcName.slice(0, sepIdx);
+          const toolName = funcName.slice(sepIdx + 2);
+
+          // Find the matching MCP tool to get the server_id
+          const matchingTool = mcpTools.find(
+            (t) => t.server_name === serverName && t.name === toolName,
+          );
+          if (!matchingTool) {
+            // Add error result
+            const errorMsg: ChatMessage = {
+              role: "tool",
+              content: `Tool not found: ${funcName}`,
+              tool_call_id: tc.id,
+              name: funcName,
+            };
+            loopMessages = [...loopMessages, errorMsg];
+            conversationMessages = [...conversationMessages, errorMsg];
+            continue;
+          }
+
+          setExecutingTools((prev) => [...prev, toolName]);
+
+          try {
+            let args: Record<string, unknown> = {};
+            try {
+              args = JSON.parse(tc.function.arguments || "{}");
+            } catch {
+              // malformed args
+            }
+
+            const result = await mcpServers.callTool({
+              server_id: matchingTool.server_id,
+              tool_name: toolName,
+              arguments: args,
+            });
+
+            const toolMsg: ChatMessage = {
+              role: "tool",
+              content:
+                typeof result.result === "string"
+                  ? result.result
+                  : JSON.stringify(result.result),
+              tool_call_id: tc.id,
+              name: funcName,
+            };
+            loopMessages = [...loopMessages, toolMsg];
+            conversationMessages = [...conversationMessages, toolMsg];
+          } catch (err) {
+            const toolMsg: ChatMessage = {
+              role: "tool",
+              content: `Error: ${err instanceof Error ? err.message : "Tool execution failed"}`,
+              tool_call_id: tc.id,
+              name: funcName,
+            };
+            loopMessages = [...loopMessages, toolMsg];
+            conversationMessages = [...conversationMessages, toolMsg];
+          } finally {
+            setExecutingTools((prev) => prev.filter((t) => t !== toolName));
+          }
+        }
+
+        // Update chat to show tool results, then loop for next model response
+        updateChat(chatId!, (c) => ({
+          ...c,
+          messages: [...loopMessages, { role: "assistant", content: "" }],
+        }));
       }
 
       setLastTokenCount(tokenCount > 0 ? tokenCount : null);
@@ -465,13 +621,14 @@ export function ChatPage() {
       updateChat(chatId!, (c) => ({
         ...c,
         messages: [
-          ...updatedMessages,
+          ...loopMessages,
           { role: "assistant", content: `Error: ${errorContent}` },
         ],
       }));
     } finally {
       setStreaming(false);
       setQueuePosition(null);
+      setExecutingTools([]);
     }
   }
 
@@ -845,6 +1002,22 @@ export function ChatPage() {
               </span>
             );
           })()}
+          {mcpTools.length > 0 && (
+            <button
+              onClick={() => setMcpEnabled(!mcpEnabled)}
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] border transition-colors ${
+                mcpEnabled
+                  ? "bg-[#EDE7F6] text-[#5E35B1] border-[#D1C4E9]"
+                  : "bg-[#F4F3EE] text-[#B1ADA1] border-[#E5E1DB]"
+              }`}
+              title={mcpEnabled ? "MCP tools active — click to disable" : "MCP tools disabled — click to enable"}
+            >
+              <svg viewBox="0 0 24 24" className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+              </svg>
+              {mcpTools.length} tools
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-auto p-4 space-y-4 min-w-0 bg-[#F4F3EE] md:pb-4 pb-[180px]">
@@ -873,6 +1046,64 @@ export function ChatPage() {
             const isLastAssistant =
               msg.role === "assistant" && i === messages.length - 1;
             const msgReactionKey = `${activeChatId}-${i}`;
+
+            // Render tool call messages (assistant with tool_calls)
+            if (msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0) {
+              return (
+                <div key={i}>
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%] space-y-1.5">
+                      {msg.content && (
+                        <div className="bg-white text-[#2D2B28] border border-[#E5E1DB] rounded-xl px-4 py-3 text-sm">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} className="prose prose-sm max-w-none prose-pre:bg-[#F4F3EE] prose-pre:text-[#2D2B28] prose-code:text-[#C15F3C] prose-code:bg-[#F4F3EE] prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-['']">
+                            {msg.content as string}
+                          </ReactMarkdown>
+                        </div>
+                      )}
+                      {msg.tool_calls.map((tc) => (
+                        <div key={tc.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#EDE7F6] border border-[#D1C4E9] text-xs">
+                          <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 text-[#5E35B1] shrink-0" fill="none" stroke="currentColor" strokeWidth={2}>
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                          </svg>
+                          <span className="text-[#5E35B1] font-medium">{tc.function.name.replace("__", " / ")}</span>
+                          <span className="text-[#8A8580] truncate max-w-[200px]">
+                            {(() => {
+                              try {
+                                const args = JSON.parse(tc.function.arguments || "{}");
+                                const keys = Object.keys(args);
+                                if (keys.length === 0) return "";
+                                return keys.map(k => `${k}: ${JSON.stringify(args[k]).slice(0, 30)}`).join(", ");
+                              } catch { return tc.function.arguments; }
+                            })()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // Render tool result messages
+            if (msg.role === "tool") {
+              return (
+                <div key={i}>
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%] rounded-lg bg-[#F3E5F5] border border-[#CE93D8] px-3 py-2 text-xs">
+                      <div className="flex items-center gap-1.5 text-[#7B1FA2] font-medium mb-1">
+                        <svg viewBox="0 0 24 24" className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        {(msg.name || "").replace("__", " / ")} result
+                      </div>
+                      <pre className="whitespace-pre-wrap text-[#2D2B28] max-h-32 overflow-auto font-mono text-[10px]">
+                        {typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             return (
               <div key={i}>
@@ -914,7 +1145,9 @@ export function ChatPage() {
                       <span className="animate-pulse text-[#B1ADA1]">
                         {queuePosition !== null && queuePosition > 0
                           ? `Position ${queuePosition} in queue...`
-                          : `Generating… ${elapsedSeconds}s`}
+                          : executingTools.length > 0
+                            ? `Running tool: ${executingTools[0]}...`
+                            : `Generating… ${elapsedSeconds}s`}
                       </span>
                     ) : (
                       <ReactMarkdown

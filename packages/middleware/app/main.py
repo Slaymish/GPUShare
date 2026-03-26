@@ -23,6 +23,7 @@ from app.routers import (
     billing,
     inference,
     invite,
+    mcp,
     model_picker,
     openai_compat,
     render,
@@ -80,5 +81,6 @@ app.include_router(billing.webhook_router)
 app.include_router(admin.router)
 app.include_router(invite.router)
 app.include_router(skills.router)
+app.include_router(mcp.router)
 app.include_router(model_picker.router)
 app.include_router(account.router)

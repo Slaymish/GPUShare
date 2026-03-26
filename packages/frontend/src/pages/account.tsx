@@ -20,6 +20,7 @@ import { useTheme } from "../theme-provider";
 import { type ThemeName, THEME_LABELS } from "../theme.config";
 import { PaymentMethodSetup } from "../components/PaymentMethodSetup";
 import { OnboardingModal } from "../components/OnboardingModal";
+import { McpSettings } from "../components/McpSettings";
 import { fmtUsd } from "../lib/format";
 import { isGuest, clearToken } from "../lib/auth";
 import { router } from "../router";
@@ -899,6 +900,9 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
           </Button>
         </div>
       )}
+
+      {/* MCP Servers */}
+      {!isGuest() && <McpSettings />}
 
       {/* API Keys */}
       <div className="bg-white rounded-xl p-4 md:p-6 space-y-4 border border-[#E5E1DB]">

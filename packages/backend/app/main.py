@@ -13,7 +13,7 @@ from fastapi import Depends, FastAPI
 from fastapi.responses import PlainTextResponse
 
 from app.middleware.internal_auth import require_internal
-from app.routers.internal import health, inference, render
+from app.routers.internal import health, inference, mcp, render
 
 
 @asynccontextmanager
@@ -37,6 +37,7 @@ app = FastAPI(
 app.include_router(health.router, dependencies=[Depends(require_internal)])
 app.include_router(inference.router, dependencies=[Depends(require_internal)])
 app.include_router(render.router, dependencies=[Depends(require_internal)])
+app.include_router(mcp.router, dependencies=[Depends(require_internal)])
 
 
 @app.get("/ping")

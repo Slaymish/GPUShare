@@ -9,12 +9,14 @@ from typing import List, Optional
 
 from sqlalchemy import (
     ARRAY,
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
     Integer,
     Numeric,
     String,
+    Text,
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -83,6 +85,9 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     invoices: Mapped[List["Invoice"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    mcp_servers: Mapped[List["McpServer"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -296,3 +301,37 @@ class Invoice(Base):
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="invoices")
+
+
+class McpServer(Base):
+    __tablename__ = "mcp_servers"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    transport: Mapped[str] = mapped_column(
+        String, default="stdio", server_default=text("'stdio'")
+    )
+    command: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    args_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    env_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=text("true")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=text("now()"),
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="mcp_servers")

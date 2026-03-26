@@ -28,6 +28,14 @@ import type {
 } from "@shared/types/render";
 import type { SkillSummary, SkillDetail } from "@shared/types/skills";
 import type {
+  McpServerCreate,
+  McpServerUpdate,
+  McpServerResponse,
+  McpToolsResponse,
+  McpToolCallRequest,
+  McpToolCallResponse,
+} from "@shared/types/mcp";
+import type {
   AdminUserResponse,
   UserUpdateRequest,
   AdjustBalanceRequest,
@@ -391,6 +399,23 @@ export const admin = {
     get<{ status: string; integration: string; detail?: string }>(
       `/v1/admin/health/${key}`,
     ),
+};
+
+// MCP Servers
+export const mcpServers = {
+  list: () => get<McpServerResponse[]>("/v1/mcp/servers"),
+  create: (data: McpServerCreate) =>
+    post<McpServerResponse>("/v1/mcp/servers", data),
+  update: (id: string, data: McpServerUpdate) =>
+    patch<McpServerResponse>(`/v1/mcp/servers/${id}`, data),
+  delete: (id: string) => del<void>(`/v1/mcp/servers/${id}`),
+  connect: (id: string) =>
+    post<McpServerResponse>(`/v1/mcp/servers/${id}/connect`),
+  disconnect: (id: string) =>
+    post<McpServerResponse>(`/v1/mcp/servers/${id}/disconnect`),
+  listTools: () => get<McpToolsResponse>("/v1/mcp/tools"),
+  callTool: (data: McpToolCallRequest) =>
+    post<McpToolCallResponse>("/v1/mcp/tools/call", data),
 };
 
 // Model picker

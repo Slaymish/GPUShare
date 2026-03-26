@@ -3,6 +3,8 @@ CLAUDE.md
 .env
 .env.local
 docs/blog-post-*
+node_modules/
+__pycache__/
 packages/server/app/schemas/__pycache__/
 packages/server/app/__pycache__/
 packages/frontend/node_modules/

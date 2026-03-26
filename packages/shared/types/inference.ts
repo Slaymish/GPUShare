@@ -4,9 +4,32 @@ export interface ContentPart {
   image_url?: { url: string };
 }
 
+export interface ToolCallFunction {
+  name: string;
+  arguments: string; // JSON-encoded string
+}
+
+export interface ToolCall {
+  id: string;
+  type: string;
+  function: ToolCallFunction;
+}
+
+export interface ToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description?: string;
+    parameters?: Record<string, unknown>;
+  };
+}
+
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | ContentPart[];
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+  name?: string;
 }
 
 export interface ChatCompletionRequest {
@@ -15,6 +38,8 @@ export interface ChatCompletionRequest {
   stream?: boolean;
   temperature?: number;
   max_tokens?: number;
+  tools?: ToolDefinition[];
+  tool_choice?: string | Record<string, unknown>;
 }
 
 export interface ChatCompletionChoice {
@@ -40,6 +65,15 @@ export interface ChatCompletionResponse {
 
 export interface StreamDelta {
   content?: string;
+  tool_calls?: Array<{
+    index: number;
+    id?: string;
+    type?: string;
+    function?: {
+      name?: string;
+      arguments?: string;
+    };
+  }>;
 }
 
 export interface StreamChoice {
