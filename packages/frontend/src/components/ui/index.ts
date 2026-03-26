@@ -7,3 +7,7 @@ export * from './dropdown-menu';
 export * from './badge';
 export * from './stat-card';
 export * from './relative-time';
+export * from './sheet';
+export * from './scroll-area';
+export * from './tooltip';
+export * from './skeleton';

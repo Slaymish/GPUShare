@@ -18,3 +18,4 @@ tiktoken==0.8.0
 slowapi==0.1.9
 pyyaml==6.0.2
 tapo==0.8.12
+mcp==1.6.0

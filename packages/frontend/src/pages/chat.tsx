@@ -15,6 +15,17 @@ import {
   SelectItem,
   Badge,
   RelativeTime,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetClose,
+  ScrollArea,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+  Skeleton,
 } from "../components/ui";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -774,6 +785,7 @@ export function ChatPage() {
   const currentModel = models.find((m) => m.id === selectedModel);
 
   return (
+    <TooltipProvider delayDuration={400}>
     <div className="flex h-full md:flex-row flex-col">
       {/* Desktop Sidebar -- Chat List */}
       <div className="hidden md:flex w-64 border-r border-[#E5E1DB] flex-col bg-white">
@@ -782,7 +794,7 @@ export function ChatPage() {
             + New Chat
           </Button>
         </div>
-        <div className="flex-1 overflow-auto">
+        <ScrollArea className="flex-1">
           {chats.map((chat) => (
             <div
               key={chat.id}
@@ -822,94 +834,89 @@ export function ChatPage() {
               No chats yet
             </div>
           )}
-        </div>
+        </ScrollArea>
       </div>
 
       {/* Mobile Chat List Slide-over */}
-      {chatListOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-50 bg-black/30 md:hidden"
-            onClick={() => setChatListOpen(false)}
-          />
-          <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white flex flex-col md:hidden">
-            <div className="p-3 border-b border-[#E5E1DB] flex items-center justify-between">
-              <span className="text-sm font-semibold">Chats</span>
-              <button
-                onClick={() => setChatListOpen(false)}
-                className="text-[#6F6B66] hover:text-[#2D2B28] text-xs"
-              >
-                Close
-              </button>
-            </div>
-            <div className="p-3">
-              <Button
+      <Sheet open={chatListOpen} onOpenChange={setChatListOpen}>
+        <SheetContent side="left" className="w-72 md:hidden">
+          <SheetHeader>
+            <SheetTitle>Chats</SheetTitle>
+            <SheetClose className="text-[#6F6B66] hover:text-[#2D2B28] text-xs">
+              Close
+            </SheetClose>
+          </SheetHeader>
+          <div className="p-3 shrink-0">
+            <Button
+              onClick={() => {
+                createNewChat();
+                setChatListOpen(false);
+              }}
+              className="w-full"
+            >
+              + New Chat
+            </Button>
+          </div>
+          <ScrollArea className="flex-1">
+            {chats.map((chat) => (
+              <div
+                key={chat.id}
                 onClick={() => {
-                  createNewChat();
+                  setActiveChatId(chat.id);
                   setChatListOpen(false);
                 }}
-                className="w-full"
+                className={`flex items-center gap-2 px-3 py-2.5 cursor-pointer text-sm transition-colors ${
+                  chat.id === activeChatId
+                    ? "bg-[#F4F3EE] text-[#2D2B28]"
+                    : "text-[#6F6B66] hover:bg-[#F4F3EE] hover:text-[#2D2B28]"
+                }`}
               >
-                + New Chat
-              </Button>
-            </div>
-            <div className="flex-1 overflow-auto">
-              {chats.map((chat) => (
-                <div
-                  key={chat.id}
-                  onClick={() => {
-                    setActiveChatId(chat.id);
-                    setChatListOpen(false);
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2.5 cursor-pointer text-sm transition-colors ${
-                    chat.id === activeChatId
-                      ? "bg-[#F4F3EE] text-[#2D2B28]"
-                      : "text-[#6F6B66] hover:bg-[#F4F3EE] hover:text-[#2D2B28]"
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <span className="block truncate">{chat.title}</span>
-                    <RelativeTime
-                      date={new Date(chat.createdAt)}
-                      className="block text-[10px] text-[#B1ADA1] leading-tight mt-0.5"
-                    />
-                  </div>
-                  {chat.model && (
-                    <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[#EDEAE3] text-[#8A8580] text-[10px] leading-tight">
-                      {shortModelName(chat.model)}
-                    </span>
-                  )}
+                <div className="flex-1 min-w-0">
+                  <span className="block truncate">{chat.title}</span>
+                  <RelativeTime
+                    date={new Date(chat.createdAt)}
+                    className="block text-[10px] text-[#B1ADA1] leading-tight mt-0.5"
+                  />
                 </div>
-              ))}
-              {chats.length === 0 && (
-                <div className="px-3 py-4 text-xs text-[#B1ADA1] text-center">
-                  No chats yet
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+                {chat.model && (
+                  <span className="shrink-0 px-1.5 py-0.5 rounded-full bg-[#EDEAE3] text-[#8A8580] text-[10px] leading-tight">
+                    {shortModelName(chat.model)}
+                  </span>
+                )}
+              </div>
+            ))}
+            {chats.length === 0 && (
+              <div className="px-3 py-4 text-xs text-[#B1ADA1] text-center">
+                No chats yet
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 md:relative">
         <div className="border-b border-[#E5E1DB] p-4 flex flex-wrap items-center gap-2 md:gap-4 bg-white shrink-0">
           <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
-            <button
-              onClick={() => setChatListOpen(true)}
-              className="text-[#6F6B66] hover:text-[#2D2B28] shrink-0"
-              title="Chat history"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setChatListOpen(true)}
+                  className="text-[#6F6B66] hover:text-[#2D2B28] shrink-0"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Chat history</TooltipContent>
+            </Tooltip>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium truncate">
                 {activeChat ? activeChat.title : "New Chat"}
@@ -935,21 +942,25 @@ export function ChatPage() {
                   );
                 })()}
             </div>
-            <button
-              onClick={createNewChat}
-              className="text-[#6F6B66] hover:text-[#2D2B28] shrink-0"
-              title="New chat"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={createNewChat}
+                  className="text-[#6F6B66] hover:text-[#2D2B28] shrink-0"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                  >
+                    <path d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>New chat</TooltipContent>
+            </Tooltip>
           </div>
           <h2 className="text-lg font-semibold hidden md:block">
             {activeChat ? activeChat.title : "Chat"}
@@ -974,17 +985,21 @@ export function ChatPage() {
                 ))}
               </SelectContent>
             </Select>
-            <button
-              onClick={() => setShowModelPicker(true)}
-              className="text-[#6F6B66] hover:text-[#2D2B28] transition-colors shrink-0"
-              title="Help me choose a model"
-            >
-              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                <circle cx="12" cy="12" r="10" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <circle cx="12" cy="17" r=".5" fill="currentColor" />
-              </svg>
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowModelPicker(true)}
+                  className="text-[#6F6B66] hover:text-[#2D2B28] transition-colors shrink-0"
+                >
+                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <circle cx="12" cy="12" r="10" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <circle cx="12" cy="17" r=".5" fill="currentColor" />
+                  </svg>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Help me choose a model</TooltipContent>
+            </Tooltip>
           </div>
           {(() => {
             const m = models.find((m) => m.id === selectedModel);
@@ -1020,7 +1035,8 @@ export function ChatPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-auto p-4 space-y-4 min-w-0 bg-[#F4F3EE] md:pb-4 pb-[180px]">
+        <ScrollArea className="flex-1 min-w-0 bg-[#F4F3EE]">
+        <div className="p-4 space-y-4 md:pb-4 pb-[180px]">
           {/* Empty state with quick-start chips */}
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full gap-6">
@@ -1142,13 +1158,19 @@ export function ChatPage() {
                         </div>
                       )
                     ) : msg.content === "" && streaming ? (
-                      <span className="animate-pulse text-[#B1ADA1]">
-                        {queuePosition !== null && queuePosition > 0
-                          ? `Position ${queuePosition} in queue...`
-                          : executingTools.length > 0
-                            ? `Running tool: ${executingTools[0]}...`
-                            : `Generating… ${elapsedSeconds}s`}
-                      </span>
+                      <div className="space-y-2 py-1">
+                        {queuePosition !== null && queuePosition > 0 ? (
+                          <span className="text-[#B1ADA1] text-sm">Position {queuePosition} in queue...</span>
+                        ) : executingTools.length > 0 ? (
+                          <span className="text-[#B1ADA1] text-sm">Running tool: {executingTools[0]}...</span>
+                        ) : (
+                          <>
+                            <Skeleton className="h-3 w-48" />
+                            <Skeleton className="h-3 w-64" />
+                            <Skeleton className="h-3 w-32" />
+                          </>
+                        )}
+                      </div>
                     ) : (
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
@@ -1224,6 +1246,7 @@ export function ChatPage() {
           })}
           <div ref={messagesEnd} />
         </div>
+        </ScrollArea>
 
         <div className="border-t border-[#E5E1DB] p-4 bg-white shrink-0 md:relative fixed bottom-0 left-0 right-0 md:left-auto md:right-auto z-30">
           <div className="max-w-4xl mx-auto w-full space-y-2">
@@ -1250,36 +1273,38 @@ export function ChatPage() {
             {/* Skill picker dropdown */}
             <div className="relative">
               {showSkillPicker && (
-                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-[#E5E1DB] rounded-lg shadow-lg max-h-48 overflow-auto z-10">
-                  {skillCatalog
-                    .filter(
+                <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-[#E5E1DB] rounded-lg shadow-lg z-10 overflow-hidden">
+                  <ScrollArea className="max-h-48">
+                    {skillCatalog
+                      .filter(
+                        (s) =>
+                          s.name.toLowerCase().includes(skillFilter) &&
+                          !activeSkills.some((a) => a.name === s.name),
+                      )
+                      .map((skill) => (
+                        <button
+                          key={skill.name}
+                          onClick={() => handleSkillSelect(skill)}
+                          className="w-full text-left px-3 py-2 hover:bg-[#F4F3EE] transition-colors"
+                        >
+                          <div className="text-sm text-[#2D2B28] font-medium">
+                            /{skill.name}
+                          </div>
+                          <div className="text-xs text-[#8A8580] truncate">
+                            {skill.description}
+                          </div>
+                        </button>
+                      ))}
+                    {skillCatalog.filter(
                       (s) =>
                         s.name.toLowerCase().includes(skillFilter) &&
                         !activeSkills.some((a) => a.name === s.name),
-                    )
-                    .map((skill) => (
-                      <button
-                        key={skill.name}
-                        onClick={() => handleSkillSelect(skill)}
-                        className="w-full text-left px-3 py-2 hover:bg-[#F4F3EE] transition-colors"
-                      >
-                        <div className="text-sm text-[#2D2B28] font-medium">
-                          /{skill.name}
-                        </div>
-                        <div className="text-xs text-[#8A8580] truncate">
-                          {skill.description}
-                        </div>
-                      </button>
-                    ))}
-                  {skillCatalog.filter(
-                    (s) =>
-                      s.name.toLowerCase().includes(skillFilter) &&
-                      !activeSkills.some((a) => a.name === s.name),
-                  ).length === 0 && (
-                    <div className="px-3 py-2 text-xs text-[#B1ADA1]">
-                      No matching skills
-                    </div>
-                  )}
+                    ).length === 0 && (
+                      <div className="px-3 py-2 text-xs text-[#B1ADA1]">
+                        No matching skills
+                      </div>
+                    )}
+                  </ScrollArea>
                 </div>
               )}
               {/* Attachment preview strip */}
@@ -1329,16 +1354,22 @@ export function ChatPage() {
                 }}
               />
               <div className="flex gap-2">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={streaming || attachments.length >= 5}
-                  className="shrink-0 p-2 rounded-xl border border-[#E5E1DB] bg-white text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  title={currentModelSupportsVision ? "Attach file or image" : "Attach file (select a vision model to attach images)"}
-                >
-                  <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                    <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                  </svg>
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={streaming || attachments.length >= 5}
+                      className="shrink-0 p-2 rounded-xl border border-[#E5E1DB] bg-white text-[#6F6B66] hover:text-[#2D2B28] hover:border-[#B1ADA1] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                        <path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {currentModelSupportsVision ? "Attach file or image" : "Attach file (select a vision model for images)"}
+                  </TooltipContent>
+                </Tooltip>
                 <Textarea
                   ref={inputRef}
                   value={input}
@@ -1391,5 +1422,6 @@ export function ChatPage() {
         availableModelIds={models.map((m) => m.id)}
       />
     </div>
+    </TooltipProvider>
   );
 }
