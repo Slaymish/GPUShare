@@ -253,7 +253,7 @@ async def update_my_limit(
         raise HTTPException(status_code=400, detail="hard_limit_nzd is required")
 
     new_limit_dec = Decimal(str(new_limit))
-    if new_limit_dec < Decimal(str(settings.HARD_LIMIT_DEFAULT)):
+    if user.role != "admin" and new_limit_dec < Decimal(str(settings.HARD_LIMIT_DEFAULT)):
         raise HTTPException(
             status_code=400,
             detail=f"Limit cannot be lower than the system default ({settings.HARD_LIMIT_DEFAULT})",

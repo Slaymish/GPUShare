@@ -206,6 +206,7 @@ export const auth = {
     auto_light_model?: string;
     auto_heavy_model?: string;
     auto_token_threshold?: number;
+    onboarding_completed?: boolean;
   }) => patch<UserResponse>("/v1/auth/me", data),
   requestPasswordReset: (email: string) =>
     post<{ message: string }>("/v1/auth/password-reset/request", { email }),

@@ -40,6 +40,7 @@ class UserResponse(BaseModel):
     auto_light_model: str | None = None
     auto_heavy_model: str | None = None
     auto_token_threshold: int = 2000
+    onboarding_completed: bool = False
     created_at: datetime
 
 
@@ -73,6 +74,7 @@ class UpdateProfileRequest(BaseModel):
     auto_light_model: str | None = None
     auto_heavy_model: str | None = None
     auto_token_threshold: int | None = None
+    onboarding_completed: bool | None = None
 
 
 class PasswordResetRequest(BaseModel):

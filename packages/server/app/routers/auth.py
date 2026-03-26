@@ -329,6 +329,7 @@ async def me(user: User | None = Depends(get_current_user)):
             auto_light_model=None,
             auto_heavy_model=None,
             auto_token_threshold=2000,
+            onboarding_completed=True,
             created_at=datetime.now(timezone.utc),
         )
     return user
@@ -370,6 +371,8 @@ async def update_me(
                 detail="Token threshold must be between 100 and 100000",
             )
         user.auto_token_threshold = body.auto_token_threshold
+    if body.onboarding_completed is not None:
+        user.onboarding_completed = body.onboarding_completed
 
     await db.commit()
     await db.refresh(user)

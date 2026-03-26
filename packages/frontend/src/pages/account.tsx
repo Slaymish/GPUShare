@@ -19,6 +19,7 @@ import {
 import { useTheme } from "../theme-provider";
 import { type ThemeName, THEME_LABELS } from "../theme.config";
 import { PaymentMethodSetup } from "../components/PaymentMethodSetup";
+import { OnboardingModal } from "../components/OnboardingModal";
 import { fmtUsd } from "../lib/format";
 import { isGuest, clearToken } from "../lib/auth";
 import { router } from "../router";
@@ -173,6 +174,7 @@ export function AccountPage() {
   const [autoThreshold, setAutoThreshold] = useState(2000);
   const [autoSaving, setAutoSaving] = useState(false);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const billingEnabled =
     (health?.integrations?.billing && health?.integrations?.stripe) ?? false;
@@ -881,6 +883,23 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
         </div>
       )}
 
+      {/* Onboarding */}
+      {user && !isGuest() && (
+        <div className="bg-white rounded-xl p-4 md:p-6 border border-[#E5E1DB]">
+          <h3 className="font-medium mb-3">Onboarding</h3>
+          <p className="text-sm text-[#6F6B66] mb-3">
+            Replay the getting-started guide for a refresher on how to use the platform.
+          </p>
+          <Button
+            onClick={() => setShowOnboarding(true)}
+            variant="ghost"
+            size="sm"
+          >
+            Restart Onboarding
+          </Button>
+        </div>
+      )}
+
       {/* API Keys */}
       <div className="bg-white rounded-xl p-4 md:p-6 space-y-4 border border-[#E5E1DB]">
         <h3 className="font-medium">API Keys</h3>
@@ -1441,6 +1460,17 @@ export ANTHROPIC_AUTH_TOKEN="${revealedKey}"
           onCancel={() => {
             setSetupClientSecret(null);
           }}
+        />
+      )}
+
+      {user && (
+        <OnboardingModal
+          open={showOnboarding}
+          role={user.role === "admin" ? "admin" : "user"}
+          nodeName={health?.node ?? "GPUShare"}
+          health={health}
+          billingEnabled={billingEnabled}
+          onComplete={() => setShowOnboarding(false)}
         />
       )}
     </div>

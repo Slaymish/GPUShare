@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from sqlalchemy import (
     ARRAY,
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -63,6 +64,9 @@ class User(Base):
     auto_heavy_model: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     auto_token_threshold: Mapped[int] = mapped_column(
         Integer, default=2000, server_default=text("2000")
+    )
+    onboarding_completed: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

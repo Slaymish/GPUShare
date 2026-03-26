@@ -29,6 +29,7 @@ export interface UserResponse {
   auto_light_model: string | null;
   auto_heavy_model: string | null;
   auto_token_threshold: number;
+  onboarding_completed: boolean;
   created_at: string;
 }
 

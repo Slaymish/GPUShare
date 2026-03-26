@@ -2,9 +2,10 @@ import { Outlet, Link, useRouterState } from "@tanstack/react-router";
 import { isAuthenticated, parseToken, clearToken } from "../lib/auth";
 import { useEffect, useState } from "react";
 import { useWebHaptics } from "../lib/haptics";
-import { billing, getHealth } from "../lib/api";
+import { auth, billing, getHealth } from "../lib/api";
 import type { HealthResponse } from "../lib/api";
 import { router } from "../router";
+import { OnboardingModal } from "./OnboardingModal";
 import {
   branding,
   status as statusConfig,
@@ -227,6 +228,7 @@ export function Layout() {
 
   const [balance, setBalance] = useState<number | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(() => {
@@ -242,12 +244,15 @@ export function Layout() {
       .getBalance()
       .then((b) => setBalance(b.balance_nzd))
       .catch(() => {});
-    import("../lib/api").then(({ auth }) =>
-      auth
-        .getMe()
-        .then((u) => setEmail(u.email))
-        .catch(() => {}),
-    );
+    auth
+      .getMe()
+      .then((u) => {
+        setEmail(u.email);
+        if (!u.onboarding_completed) {
+          setShowOnboarding(true);
+        }
+      })
+      .catch(() => {});
   }, [authed, routerState.location.pathname]);
 
   // Close mobile sidebar on route change
@@ -547,6 +552,18 @@ export function Layout() {
       >
         <Outlet />
       </main>
+
+      <OnboardingModal
+        open={showOnboarding}
+        role={isAdmin ? "admin" : "user"}
+        nodeName={health?.node ?? "GPUShare"}
+        health={health}
+        billingEnabled={billingEnabled}
+        onComplete={() => {
+          setShowOnboarding(false);
+          auth.updateMe({ onboarding_completed: true }).catch(() => {});
+        }}
+      />
     </div>
   );
 }
