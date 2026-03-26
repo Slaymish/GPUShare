@@ -7,8 +7,6 @@
 
 > Turn your idle gaming GPU into a private AI & rendering server for friends and family — they only pay for electricity used.
 
-[**Demo**](#) | [**Quick Start**](#quick-start) | [**Documentation**](https://github.com/Slaymish/GPUShare/wiki) 
-
 ![GPUShare Dashboard Screenshot](screenshot.png)
 
 ## Why GPUShare?
