@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "trademe": {
+      "command": "python",
+      "args": ["-m", "trademe_mcp.server"],
+      "env": {
+        "TRADEME_CONSUMER_KEY": "",
+        "TRADEME_CONSUMER_SECRET": "",
+        "TRADEME_ACCESS_TOKEN": "",
+        "TRADEME_ACCESS_TOKEN_SECRET": "",
+        "TRADEME_ENVIRONMENT": "sandbox"
+      }
+    }
+  }
+}
