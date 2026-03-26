@@ -6,6 +6,22 @@ All notable changes to GPUShare are documented here.
 
 ## [Unreleased]
 
+### Architecture
+
+- **Backend / Middleware split** — separated the FastAPI monolith (`packages/server/`) into two services:
+  - **`packages/backend/`** — internal-only service (port 8080) handling hardware operations: Ollama inference, Blender rendering, R2 file storage, GPU monitoring, Tapo energy monitoring. Never exposed to the internet. All routes require `X-Internal-Token` header.
+  - **`packages/middleware/`** — frontend-facing BFF (port 8000) exposed via Cloudflare Tunnel. Handles auth, billing, user management, response caching, Stripe, and proxies hardware ops to the backend via shared `INTERNAL_SECRET`.
+- **Aggregated account endpoint** — `GET /v1/account` fetches all account page data in one request (user, balance, usage, invoices, API keys, payment methods, models, health) using `asyncio.gather`. Replaces 9 individual frontend API calls.
+- **Server-side TTL cache** — in-process cache in middleware: health 15s, models 30s, skills 5m, model picker 6h.
+- **SSE streaming proxy** — inference streams proxied byte-for-byte through middleware using `httpx.AsyncClient.stream()` + `aiter_bytes(chunk_size=None)`.
+- **Removed Celery + Redis** — `celery-worker` service and Redis were in docker-compose but `app.celery_app` never existed in the codebase. Removed the dead services, `Dockerfile.celery`, and the Redis volume.
+
+### Developer Experience
+
+- **Overhauled pnpm scripts** — root `package.json` scripts updated for the new two-service architecture. Short top-level names (`up`, `down`, `logs`, `rebuild`), per-service log tailing (`logs:backend`, `logs:middleware`, `logs:worker`), shell access (`shell:backend`, `shell:middleware`), GPU variant (`up:gpu`), and tunnel profile (`up:tunnel`). Removed stale `fastapi`/`server` references and duplicate scripts.
+- **Frontend uses aggregated endpoint** — `account.tsx` replaced two redundant `useEffect` hooks + a separate models hook (9 total calls) with a single `accountApi.getPage()` call.
+- **`INTERNAL_SECRET` and `BACKEND_URL`** added to `.env.example` with generation instructions.
+
 ### Features
 - **One-click installers for Windows, macOS, and Linux** — completely rewritten `setup.sh` (macOS/Linux) and `setup.ps1` (Windows) with guided wizard and fully non-interactive mode. New `setup.bat` double-click launcher for Windows and `install.sh` curl one-liner (`curl -fsSL ... | bash`). Key additions:
   - **`--quick` / `-Quick` flag** — non-interactive install with sensible defaults, zero prompts

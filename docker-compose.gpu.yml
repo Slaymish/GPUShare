@@ -18,9 +18,16 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
 
-  fastapi:
+  backend:
     depends_on:
       - ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   render-worker:
     deploy:

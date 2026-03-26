@@ -4,32 +4,33 @@
   "private": true,
   "description": "GPU compute sharing platform — AI inference and 3D rendering at electricity cost",
   "scripts": {
-    "dev": "pnpm run dev:frontend & pnpm run dev:server",
+    "dev": "pnpm run --parallel dev:frontend dev:docker",
     "dev:frontend": "pnpm --filter gpushare-frontend dev",
-    "dev:server": "docker compose up",
+    "dev:docker": "docker compose up",
+
+    "up": "docker compose up -d",
+    "up:gpu": "docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d",
+    "up:tunnel": "docker compose --profile tunnel up -d",
+    "down": "docker compose down",
+    "restart": "docker compose restart",
+    "rebuild": "docker compose up -d --build",
+
+    "logs": "docker compose logs -f",
+    "logs:backend": "docker compose logs -f backend",
+    "logs:middleware": "docker compose logs -f middleware",
+    "logs:worker": "docker compose logs -f render-worker",
+
+    "shell:backend": "docker compose exec backend bash",
+    "shell:middleware": "docker compose exec middleware bash",
+
+    "db:migrate": "docker compose exec backend alembic upgrade head",
+    "db:revision": "docker compose exec backend alembic revision --autogenerate -m",
+    "db:sync": "docker compose cp backend:/app/alembic/versions/. packages/backend/alembic/versions/",
+
     "build": "pnpm --filter gpushare-frontend build",
-    "build:frontend": "pnpm --filter gpushare-frontend build",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f",
-    "docker:restart": "docker compose restart",
-    "docker:rebuild": "docker compose up -d --build",
-    "server:logs": "docker compose logs -f fastapi",
-    "server:shell": "docker compose exec fastapi bash",
-    "db:migrate": "docker compose exec fastapi alembic upgrade head",
-    "db:revision": "docker compose exec fastapi alembic revision --autogenerate -m",
-    "db:revision:sync": "docker compose cp fastapi:/app/alembic/versions/. packages/server/alembic/versions/",
-    "db:new": "pnpm db:revision && pnpm db:revision:sync",
-    "docs": "echo 'OpenAPI docs available at http://localhost:8000/docs'",
-    "docs:open": "open http://localhost:8000/docs",
-    "swagger": "open http://localhost:8000/docs",
-    "redoc": "open http://localhost:8000/redoc",
-    "openapi": "curl http://localhost:8000/openapi.json > openapi.json && echo 'OpenAPI spec saved to openapi.json'",
-    "test:frontend": "pnpm --filter gpushare-frontend test",
-    "lint:frontend": "pnpm --filter gpushare-frontend lint",
-    "format": "pnpm --filter gpushare-frontend format",
-    "clean": "pnpm --filter gpushare-frontend clean && docker compose down -v",
-    "install:all": "pnpm install && pnpm --filter frontend install"
+    "typecheck": "pnpm --filter gpushare-frontend exec tsc --noEmit",
+
+    "clean": "docker compose down -v"
   },
   "workspaces": [
     "packages/frontend",

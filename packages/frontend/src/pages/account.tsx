@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useWebHaptics } from "../lib/haptics";
-import { auth as authApi, billing, getHealth, inference } from "../lib/api";
+import { auth as authApi, billing, account as accountApi } from "../lib/api";
 import type { HealthResponse } from "../lib/api";
 import type { UserResponse, ApiKeyResponse } from "@shared/types/auth";
 import type {
@@ -135,6 +135,7 @@ export function AccountPage() {
   const [user, setUser] = useState<UserResponse | null>(null);
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [usage, setUsage] = useState<UsageLogResponse[]>([]);
+  const [allUsage, setAllUsage] = useState<UsageLogResponse[]>([]);
   const [usageOffset, setUsageOffset] = useState(0);
   const [invoices, setInvoices] = useState<InvoiceResponse[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKeyResponse[]>([]);
@@ -176,36 +177,34 @@ export function AccountPage() {
   const billingEnabled =
     (health?.integrations?.billing && health?.integrations?.stripe) ?? false;
 
-  // Compute usage statistics from usage logs (more reliable than backend aggregates)
+  // Compute usage statistics — use server-computed totals from balance for costs (accurate),
+  // and allUsage for per-model breakdown.
   const usageStats = useMemo(() => {
     let cloudInferenceCount = 0;
     let localInferenceCount = 0;
-    let cloudInferenceCost = 0;
-    let localInferenceCost = 0;
     const modelCosts: Record<string, number> = {};
 
-    for (const u of usage) {
+    for (const u of allUsage) {
       const isCloud = u.model.includes("/");
-      if (isCloud) {
-        cloudInferenceCount++;
-        cloudInferenceCost += u.cost_nzd;
-      } else {
-        localInferenceCount++;
-        localInferenceCost += u.cost_nzd;
-      }
+      if (isCloud) cloudInferenceCount++;
+      else localInferenceCount++;
       modelCosts[u.model] = (modelCosts[u.model] || 0) + u.cost_nzd;
     }
 
-    const totalKwh = usage.reduce((sum, u) => sum + u.kwh, 0);
+    // Use server-computed totals for accuracy (not limited by pagination)
+    const cloudInferenceCost = balance?.total_cloud_inference_cost_nzd ?? 0;
+    const totalInferenceCost = balance?.total_inference_cost_nzd ?? 0;
+    const localInferenceCost = totalInferenceCost - cloudInferenceCost;
     const renderCost = balance?.total_render_cost_nzd ?? 0;
-    const totalInferenceCost = cloudInferenceCost + localInferenceCost;
+
+    const totalKwh = allUsage.reduce((sum, u) => sum + u.kwh, 0);
 
     const topModels = Object.entries(modelCosts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
     return {
-      inferenceCount: usage.length,
+      inferenceCount: allUsage.length,
       cloudInferenceCost,
       localInferenceCost,
       cloudInferenceCount,
@@ -216,72 +215,35 @@ export function AccountPage() {
       totalUsed: balance?.total_used_nzd ?? 0,
       topModels,
     };
-  }, [usage, balance]);
+  }, [allUsage, balance]);
 
   function fetchAll() {
-    Promise.all([
-      authApi
-        .getMe()
-        .then((u) => {
-          setUser(u);
-          setLimitInput(String(u.hard_limit_nzd));
-        })
-        .catch(() => {}),
-      billing
-        .getBalance()
-        .then(setBalance)
-        .catch(() => {}),
-      billing
-        .getUsage(50, usageOffset)
-        .then(setUsage)
-        .catch(() => {}),
-      billing
-        .getInvoices()
-        .then(setInvoices)
-        .catch(() => {}),
-      authApi
-        .listApiKeys()
-        .then(setApiKeys)
-        .catch(() => {}),
-      getHealth()
-        .then(setHealth)
-        .catch(() => {}),
-      billing
-        .listPaymentMethods()
-        .then(setPaymentMethods)
-        .catch(() => {}),
-    ]).finally(() => setLoading(false));
-  }
-
-  useEffect(() => {
-    Promise.all([
-      authApi.getMe(),
-      billing.getBalance(),
-      billing.getUsage(),
-      billing.getInvoices(),
-      authApi.listApiKeys(),
-      getHealth(),
-      billing.listPaymentMethods(),
-    ])
-      .then(([u, b, usage, inv, keys, h, pm]) => {
+    accountApi
+      .getPage()
+      .then((data) => {
+        const u = data.user;
         setUser(u);
-        setBalance(b);
-        setUsage(usage);
-        setInvoices(inv);
-        setApiKeys(keys);
-        setHealth(h);
-        setPaymentMethods(pm);
-        setLimitInput(u.hard_limit_nzd.toString());
+        setBalance(data.balance);
+        setUsage(data.usage_recent);
+        setAllUsage(data.usage_all);
+        setInvoices(data.invoices);
+        setApiKeys(data.api_keys);
+        setHealth(data.health);
+        setPaymentMethods(data.payment_methods);
+        setLimitInput(String(u.hard_limit_nzd));
         setEditName(u.name || "");
         setEditEmail(u.email);
         if (u.theme) setActiveTheme(u.theme as ThemeName);
         setAutoLightModel(u.auto_light_model || "");
         setAutoHeavyModel(u.auto_heavy_model || "");
         setAutoThreshold(u.auto_token_threshold || 2000);
+        setAvailableModels(
+          (data.models.data ?? []).filter((m) => m.id !== "auto").map((m) => m.id),
+        );
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }
 
   useEffect(() => {
     fetchAll();
@@ -293,19 +255,6 @@ export function AccountPage() {
       .then(setUsage)
       .catch(() => {});
   }, [usageOffset]);
-
-  // Fetch available models for auto model picker
-  useEffect(() => {
-    inference
-      .listModels()
-      .then((res) => {
-        // Exclude 'auto' itself, list all real models
-        setAvailableModels(
-          res.data.filter((m) => m.id !== "auto").map((m) => m.id),
-        );
-      })
-      .catch(() => {});
-  }, []);
 
   async function handleCreateKey() {
     try {
@@ -345,6 +294,8 @@ export function AccountPage() {
     try {
       const res = await authApi.updateMyLimit(Number(limitInput));
       setLimitInput(String(res.hard_limit_nzd));
+      setUser((prev) => prev ? { ...prev, hard_limit_nzd: res.hard_limit_nzd } : prev);
+      setBalance((prev) => prev ? { ...prev, hard_limit_nzd: res.hard_limit_nzd } : prev);
       trigger("success");
     } catch {}
     setLimitSaving(false);

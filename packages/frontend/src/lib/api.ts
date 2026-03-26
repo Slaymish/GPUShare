@@ -248,6 +248,33 @@ export const billing = {
     del<void>(`/v1/account/payment-methods/${id}`),
 };
 
+// Aggregated account page data
+export interface AccountPageResponse {
+  user: UserResponse & {
+    auto_light_model: string | null;
+    auto_heavy_model: string | null;
+    auto_token_threshold: number | null;
+  };
+  balance: BalanceResponse;
+  usage_recent: UsageLogResponse[];
+  usage_all: UsageLogResponse[];
+  invoices: InvoiceResponse[];
+  api_keys: ApiKeyResponse[];
+  payment_methods: Array<{
+    id: string;
+    card_brand: string;
+    card_last4: string;
+    card_exp_month: number;
+    card_exp_year: number;
+  }>;
+  models: ModelsResponse;
+  health: HealthResponse;
+}
+
+export const account = {
+  getPage: () => get<AccountPageResponse>("/v1/account"),
+};
+
 // Inference
 export const inference = {
   listModels: () => get<ModelsResponse>("/v1/inference/models"),
