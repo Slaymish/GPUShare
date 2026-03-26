@@ -460,16 +460,7 @@ async def update_my_limit(
     if new_limit is None:
         raise HTTPException(status_code=400, detail="hard_limit_nzd is required")
 
-    admin_default = _get_settings().HARD_LIMIT_DEFAULT
     new_limit_dec = Decimal(str(new_limit))
-
-    # Users can only make their limit stricter (closer to zero) than the admin default
-    if new_limit_dec < admin_default:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Limit cannot be lower than the system default ({admin_default})",
-        )
-
     user.hard_limit_nzd = new_limit_dec
     await db.flush()
     return {"hard_limit_nzd": float(user.hard_limit_nzd)}
