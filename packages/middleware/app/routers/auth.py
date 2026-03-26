@@ -6,8 +6,6 @@ create/revoke) are handled locally — the middleware has full DB write access
 for user management tables.
 """
 
-from __future__ import annotations
-
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
