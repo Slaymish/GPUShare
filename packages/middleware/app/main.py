@@ -21,6 +21,7 @@ from app.routers import (
     admin,
     auth,
     billing,
+    household,
     inference,
     invite,
     mcp,
@@ -84,3 +85,4 @@ app.include_router(skills.router)
 app.include_router(mcp.router)
 app.include_router(model_picker.router)
 app.include_router(account.router)
+app.include_router(household.router)

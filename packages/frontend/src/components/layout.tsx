@@ -179,6 +179,38 @@ function AdminIcon({ className }: { className?: string }) {
   );
 }
 
+function HouseholdIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    </svg>
+  );
+}
+
+function CodingAgentIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
 function MenuIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -214,6 +246,8 @@ function CloseIcon({ className }: { className?: string }) {
 const iconMap: Record<string, React.FC<{ className?: string }>> = {
   Chat: ChatIcon,
   Render: RenderIcon,
+  Household: HouseholdIcon,
+  "Coding Agent": CodingAgentIcon,
   Account: AccountIcon,
   Admin: AdminIcon,
 };
@@ -271,6 +305,8 @@ export function Layout() {
   const navItems = [
     { to: "/chat" as const, label: "Chat" },
     { to: "/render" as const, label: "Render" },
+    { to: "/household" as const, label: "Household" },
+    { to: "/coding-agent" as const, label: "Coding Agent" },
     { to: "/account" as const, label: "Account" },
     ...(isAdmin ? [{ to: "/admin" as const, label: "Admin" }] : []),
   ];

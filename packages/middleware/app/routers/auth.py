@@ -231,6 +231,10 @@ async def update_me(
         if body.auto_token_threshold < 100 or body.auto_token_threshold > 100000:
             raise HTTPException(status_code=400, detail="Token threshold must be between 100 and 100000")
         user.auto_token_threshold = body.auto_token_threshold
+    if body.coding_agent_directories is not None:
+        user.coding_agent_directories = body.coding_agent_directories
+    if body.coding_agent_heartbeat is not None:
+        user.coding_agent_heartbeat = body.coding_agent_heartbeat
     await db.commit()
     await db.refresh(user)
     return user

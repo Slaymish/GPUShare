@@ -66,6 +66,12 @@ class User(Base):
     auto_token_threshold: Mapped[int] = mapped_column(
         Integer, default=2000, server_default=text("2000")
     )
+    coding_agent_directories: Mapped[List[str]] = mapped_column(
+        ARRAY(String), server_default=text("'{}'")
+    )
+    coding_agent_heartbeat: Mapped[str] = mapped_column(
+        String, default="0 * * * *", server_default=text("'0 * * * *'")
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=text("now()"),

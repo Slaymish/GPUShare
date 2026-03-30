@@ -40,6 +40,8 @@ class UserResponse(BaseModel):
     auto_light_model: str | None = None
     auto_heavy_model: str | None = None
     auto_token_threshold: int = 2000
+    coding_agent_directories: list[str] = []
+    coding_agent_heartbeat: str = "0 * * * *"
     created_at: datetime
 
 
@@ -73,6 +75,8 @@ class UpdateProfileRequest(BaseModel):
     auto_light_model: str | None = None
     auto_heavy_model: str | None = None
     auto_token_threshold: int | None = None
+    coding_agent_directories: list[str] | None = None
+    coding_agent_heartbeat: str | None = None
 
 
 class PasswordResetRequest(BaseModel):

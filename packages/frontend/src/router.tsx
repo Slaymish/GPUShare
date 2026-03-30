@@ -6,6 +6,8 @@ import { RenderPage } from './pages/render';
 import { AccountPage } from './pages/account';
 import { AdminPage } from './pages/admin';
 import { ResetPasswordPage } from './pages/reset-password';
+import { HouseholdPage } from './pages/household';
+import { CodingAgentPage } from './pages/coding-agent';
 import { isAuthenticated, parseToken } from './lib/auth';
 
 const rootRoute = createRootRoute({
@@ -64,6 +66,24 @@ const adminRoute = createRoute({
   },
 });
 
+const householdRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/household',
+  component: HouseholdPage,
+  beforeLoad: () => {
+    if (!isAuthenticated()) throw redirect({ to: '/login' });
+  },
+});
+
+const codingAgentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/coding-agent',
+  component: CodingAgentPage,
+  beforeLoad: () => {
+    if (!isAuthenticated()) throw redirect({ to: '/login' });
+  },
+});
+
 const resetPasswordRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reset-password',
@@ -78,6 +98,8 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   chatRoute,
   renderRoute,
+  householdRoute,
+  codingAgentRoute,
   accountRoute,
   adminRoute,
   resetPasswordRoute,

@@ -215,6 +215,8 @@ export const auth = {
     auto_heavy_model?: string;
     auto_token_threshold?: number;
     onboarding_completed?: boolean;
+    coding_agent_directories?: string[];
+    coding_agent_heartbeat?: string;
   }) => patch<UserResponse>("/v1/auth/me", data),
   requestPasswordReset: (email: string) =>
     post<{ message: string }>("/v1/auth/password-reset/request", { email }),
@@ -467,6 +469,49 @@ export interface ModelPickerResponse {
 
 export const modelPicker = {
   getRecommendations: () => get<ModelPickerResponse>("/v1/model-picker/recommendations"),
+};
+
+// ---------------------------------------------------------------------------
+// Household
+// ---------------------------------------------------------------------------
+
+export interface ShoppingItem {
+  item: string;
+  added_by: string;
+  added_at: string;
+}
+
+export interface HouseholdReminder {
+  text: string;
+  due: string;
+  added_by: string;
+}
+
+export interface HouseholdNote {
+  title: string;
+  body: string;
+  added_by: string;
+}
+
+export interface HouseholdData {
+  shopping_list: ShoppingItem[];
+  reminders: HouseholdReminder[];
+  notes: HouseholdNote[];
+  flatmates: string[];
+}
+
+export const household = {
+  get: () => get<HouseholdData>("/v1/household"),
+  addShopping: (item: string) =>
+    request<HouseholdData>("POST", "/v1/household/shopping", { item }),
+  removeShopping: (item: string) =>
+    request<HouseholdData>("DELETE", `/v1/household/shopping/${encodeURIComponent(item)}`),
+  addReminder: (text: string, due: string) =>
+    request<HouseholdData>("POST", "/v1/household/reminders", { text, due }),
+  removeReminder: (index: number) =>
+    request<HouseholdData>("DELETE", `/v1/household/reminders/${index}`),
+  addNote: (title: string, body: string) =>
+    request<HouseholdData>("POST", "/v1/household/notes", { title, body }),
 };
 
 export { ApiError };

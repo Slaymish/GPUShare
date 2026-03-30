@@ -29,6 +29,8 @@ export interface UserResponse {
   auto_light_model: string | null;
   auto_heavy_model: string | null;
   auto_token_threshold: number;
+  coding_agent_directories: string[];
+  coding_agent_heartbeat: string;
   onboarding_completed: boolean;
   created_at: string;
 }
